@@ -13,6 +13,37 @@
     </header>
 
     <section class="panel">
+      <!-- Configuración de modo -->
+      <div class="config-section">
+        <h3>⚙️ Configuración</h3>
+        <div class="config-group">
+          <label class="control">
+            <input
+              v-model="devMode"
+              type="checkbox"
+              aria-label="Modo desarrollo"
+            />
+            <span>Modo Desarrollo (BodyPix local)</span>
+          </label>
+          <p class="hint" v-if="devMode">Usa BodyPix sin consumir requests API</p>
+          <p class="hint" v-else>Usa Remove.bg API (profesional)</p>
+        </div>
+        
+        <div class="config-group" v-if="!devMode">
+          <label class="control">
+            <span>API Key Remove.bg</span>
+            <input
+              v-model="apiKey"
+              type="password"
+              placeholder="Ingresa tu API Key"
+              aria-label="API Key Remove.bg"
+              class="api-key-input"
+            />
+          </label>
+          <p class="hint">Obtén una gratis en <a href="https://www.remove.bg/api" target="_blank">remove.bg/api</a></p>
+        </div>
+      </div>
+
       <PhotoUploader
         :disabled="isLoading"
         @files-selected="handleFiles"
@@ -82,13 +113,14 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import PhotoUploader from './components/PhotoUploader.vue';
 import FaceGrid from './components/FaceGrid.vue';
 import {
   ensureFaceApiReady,
   detectFaces,
   cropFacesToPortraits,
+  setConfig,
 } from './services/FaceService';
 
 const isLoading = ref(false);
@@ -100,9 +132,29 @@ const backgroundColor = ref('#0f172a');
 const isBlackAndWhite = ref(false);
 const isHighContrast = ref(false);
 const faceGridKey = ref(0); // Clave para forzar re-render del FaceGrid
+const devMode = ref(import.meta.env.VITE_DEV_MODE === 'true');
+const apiKey = ref(import.meta.env.VITE_REMOVEBG_API_KEY || '');
+
+// Sincronizar cambios de configuración con FaceService
+watch([devMode, apiKey], ([newMode, newKey]) => {
+  setConfig({
+    devMode: newMode,
+    apiKey: newKey,
+  });
+  // Guardar API key en localStorage
+  if (newKey) {
+    localStorage.setItem('removebg_api_key', newKey);
+  }
+}, { immediate: true });
 
 onMounted(async () => {
   try {
+    // Cargar API key del localStorage si existe
+    const savedApiKey = localStorage.getItem('removebg_api_key');
+    if (savedApiKey && !apiKey.value) {
+      apiKey.value = savedApiKey;
+    }
+    
     await ensureFaceApiReady();
     modelStatus.value = 'Modelos listos (TinyFaceDetector)';
   } catch (err) {
@@ -123,6 +175,12 @@ async function handleFiles(files) {
   portraits.value = [];
   processedOnce.value = false;
 
+  // Validar configuración en modo producción
+  if (!devMode.value && !apiKey.value) {
+    errorMessage.value = 'Por favor, ingresa tu API Key de Remove.bg en modo Producción.';
+    return;
+  }
+
   const validImages = Array.from(files || []).filter((file) =>
     file.type.startsWith('image/'),
   );
@@ -136,11 +194,14 @@ async function handleFiles(files) {
 
   try {
     for (const file of validImages) {
+      console.log(`📸 Procesando: ${file.name} (${file.type}, ${(file.size / 1024).toFixed(1)}KB)`);
       const faces = await detectFaces(file);
       if (!faces.length) {
+        console.log(`   → No se detectaron rostros`);
         continue;
       }
 
+      console.log(`   → Se detectaron ${faces.length} rostro(s)`);
       const crops = await cropFacesToPortraits(file, faces, backgroundColor.value);
       portraits.value.push(
         ...crops.map((crop) => ({
@@ -148,6 +209,7 @@ async function handleFiles(files) {
           sourceName: file.name,
         })),
       );
+      console.log(`   → Generados ${crops.length} retrato(s)`);
     }
 
     if (!portraits.value.length) {
@@ -173,10 +235,22 @@ function refreshPortraits() {
 /**
  * Descarga una imagen individual
  */
-async function downloadPortrait(portrait, index) {
+async function downloadPortrait(portrait, index, transparent = false) {
   let url = portrait.url;
   
-  // Si hay filtros activos, aplica los filtros a la imagen descargada
+  // Si se solicita PNG transparente, usar la URL transparente
+  if (transparent) {
+    url = portrait.urlTransparent || portrait.url; // Fallback a URL normal si no hay transparente
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `retrato-${index + 1}-transparente.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
+  }
+  
+  // Si no es transparente, aplicar filtros normales
   if (isBlackAndWhite.value || isHighContrast.value) {
     url = await applyFiltersToPhoto(portrait.url, backgroundColor.value);
   }

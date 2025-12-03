@@ -10,13 +10,22 @@
             class="card__image"
           />
           <div class="card__overlay">
-            <button 
-              class="btn btn--sm btn--download"
-              @click="$emit('download', portrait, index)"
-              title="Descargar"
-            >
-              ⬇️
-            </button>
+            <div class="card__download-menu">
+              <button 
+                class="btn btn--sm btn--download"
+                @click="$emit('download', portrait, index, false)"
+                title="Descargar con fondo"
+              >
+                ⬇️ Normal
+              </button>
+              <button 
+                class="btn btn--sm btn--download btn--download-transparent"
+                @click="$emit('download', portrait, index, true)"
+                title="Descargar PNG transparente"
+              >
+                ⬇️ Transparente
+              </button>
+            </div>
           </div>
         </div>
         <figcaption>
@@ -259,19 +268,31 @@ function detectBackgroundColor(data, width, height) {
   opacity: 1;
 }
 
+.card__download-menu {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+}
+
 .btn--download {
   padding: 8px 12px;
-  font-size: 16px;
+  font-size: 14px;
   background: rgba(255, 255, 255, 0.9);
   border: none;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .btn--download:hover {
   background: white;
-  transform: scale(1.1);
+  transform: scale(1.05);
+}
+
+.btn--download-transparent {
+  background: rgba(100, 200, 255, 0.9);
+  color: white;
 }
 
 .caption-title {

@@ -5,6 +5,20 @@ import * as faceapi from 'face-api.js';
 import * as bodyPix from '@tensorflow-models/body-pix';
 import * as tf from '@tensorflow/tfjs';
 
+// Configuración dinámica
+let config = {
+  devMode: import.meta.env.VITE_DEV_MODE === 'true',
+  apiKey: import.meta.env.VITE_REMOVEBG_API_KEY || '',
+};
+
+/**
+ * Actualiza la configuración dinámicamente desde el front
+ */
+export function setConfig(newConfig) {
+  config = { ...config, ...newConfig };
+  console.log('⚙️ Configuración actualizada:', config);
+}
+
 /**
  * @typedef {Object} OriginalImage
  * @property {string} name
@@ -100,9 +114,7 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
   const image = await fileToImageElement(file);
   
   // En modo desarrollo, usa BodyPix (sin requests)
-  const devMode = import.meta.env.VITE_DEV_MODE === 'true';
-  
-  if (devMode) {
+  if (config.devMode) {
     console.log('🔧 MODO DESARROLLO: Usando BodyPix (sin requests)');
     let segmentation = null;
     try {
@@ -118,6 +130,7 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
       const url = cropPortraitWithSegmentation(image, face, backgroundColor, segmentation);
       return {
         url,
+        urlTransparent: url,
         sourceName: file.name,
       };
     });
@@ -145,15 +158,19 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
       const url = cropPortraitWithSegmentation(image, face, backgroundColor, segmentation);
       return {
         url,
+        urlTransparent: url,
         sourceName: file.name,
       };
     });
   }
 
   return faces.map((face) => {
-    const url = cropPortrait(removedBgImage || image, face, backgroundColor);
+    // Generar AMBAS versiones: con fondo y transparente
+    const urlWithBackground = cropPortrait(removedBgImage || image, face, backgroundColor);
+    const urlTransparent = cropPortraitTransparent(removedBgImage || image, face);
     return {
-      url,
+      url: urlWithBackground,
+      urlTransparent: urlTransparent,
       sourceName: file.name,
     };
   });
@@ -161,13 +178,13 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
 
 /**
  * Remueve el fondo usando la API de Remove.bg
- * Necesita API key en variable de entorno VITE_REMOVEBG_API_KEY
+ * Usa el API key configurado dinámicamente
  */
 async function removeBackgroundWithRemoveBg(file) {
-  const apiKey = import.meta.env.VITE_REMOVEBG_API_KEY;
+  const apiKey = config.apiKey;
   
   if (!apiKey) {
-    throw new Error('API key de Remove.bg no configurada. Añade VITE_REMOVEBG_API_KEY al archivo .env');
+    throw new Error('API key de Remove.bg no configurada. Ingresa tu API key en la sección de Configuración.');
   }
 
   const formData = new FormData();
@@ -184,7 +201,15 @@ async function removeBackgroundWithRemoveBg(file) {
   });
 
   if (!response.ok) {
-    throw new Error(`Remove.bg API error: ${response.statusText}`);
+    const errorData = await response.text();
+    console.error('Remove.bg API error details:', errorData);
+    if (response.status === 401) {
+      throw new Error('API key inválida o expirada. Verifica tu API Key de Remove.bg');
+    } else if (response.status === 402) {
+      throw new Error('Créditos agotados en Remove.bg. Recarga tu cuenta.');
+    } else {
+      throw new Error(`Remove.bg API error: ${response.statusText} (${response.status})`);
+    }
   }
 
   const blob = await response.blob();
@@ -220,83 +245,216 @@ export async function optimizePortrait(portraitDataUrl) {
 
 async function fileToImageElement(file) {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    img.onerror = (err) => {
-      URL.revokeObjectURL(url);
-      reject(new Error(`No se pudo cargar la imagen: ${err?.message || ''}`));
-    };
-    img.src = url;
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      
+      // Timeout para evitar que se quede esperando indefinidamente
+      const timeout = setTimeout(() => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Timeout al cargar la imagen (>10s)'));
+      }, 10000);
+      
+      img.onload = () => {
+        clearTimeout(timeout);
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      
+      img.onerror = (err) => {
+        clearTimeout(timeout);
+        URL.revokeObjectURL(url);
+        console.error('Error al cargar imagen:', err, 'Archivo:', file.name, 'Tipo:', file.type);
+        reject(new Error(`No se pudo cargar la imagen: ${file.name}`));
+      };
+      
+      img.src = url;
+    } catch (err) {
+      reject(new Error(`Error creando objeto URL: ${err?.message || ''}`));
+    }
   });
 }
 
-// Recorta el rostro a un canvas manteniendo un aspecto de retrato vertical.
-// La imagen ya tiene el fondo removido por Remove.bg
+/**
+ * Recorta el retrato con fondo sólido
+ */
 function cropPortrait(image, face, backgroundColor) {
-  const PORTRAIT_RATIO = 3 / 4; // ancho / alto para un encuadre vertical.
-  const EXPANSION = 1.35; // expande el recuadro alrededor del rostro para incluir hombros.
+  const EXPANSION_WIDTH = 1.5;
+  const EXPANSION_HEIGHT = 1.8;
+  const Y_OFFSET = -0.2;
 
   const centerX = face.x + face.width / 2;
-  const centerY = face.y + face.height / 2;
+  const faceTop = face.y;
+  const faceBottom = face.y + face.height;
+  const faceCenterY = faceTop + (faceBottom - faceTop) * (0.5 + Y_OFFSET);
 
-  let cropWidth = face.width * EXPANSION;
-  let cropHeight = cropWidth / PORTRAIT_RATIO;
+  let cropWidth = face.width * EXPANSION_WIDTH;
+  let cropHeight = face.height * EXPANSION_HEIGHT;
 
-  let x = centerX - cropWidth / 2;
-  let y = centerY - cropHeight / 2;
+  let squareSize = Math.min(cropWidth, cropHeight);
 
-  ({ x, y, cropWidth, cropHeight } = clampToImageBounds({
+  let x = centerX - squareSize / 2;
+  let y = faceCenterY - squareSize / 2;
+
+  ({ x, y, cropWidth: squareSize, cropHeight: squareSize } = clampToImageBounds({
     x,
     y,
-    width: cropWidth,
-    height: cropHeight,
+    width: squareSize,
+    height: squareSize,
     image,
   }));
 
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(cropWidth);
-  canvas.height = Math.round(cropHeight);
+  const OUTPUT_SIZE = 700;
+  canvas.width = OUTPUT_SIZE;
+  canvas.height = OUTPUT_SIZE;
   const ctx = canvas.getContext('2d');
 
-  // 1) Rellena con color de fondo base
+  // Rellena con color de fondo base
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 2) Dibuja la imagen (que ya tiene fondo removido)
-  ctx.drawImage(image, Math.round(x), Math.round(y), Math.round(cropWidth), Math.round(cropHeight), 0, 0, canvas.width, canvas.height);
+  // Dibuja la imagen cuadrada
+  ctx.globalCompositeOperation = 'over';
+  ctx.drawImage(
+    image, 
+    Math.round(x), 
+    Math.round(y), 
+    Math.round(squareSize), 
+    Math.round(squareSize), 
+    0, 0, 
+    OUTPUT_SIZE, 
+    OUTPUT_SIZE
+  );
 
   return canvas.toDataURL('image/png');
 }
 
-// Recorta el rostro usando segmentación BodyPix (para modo desarrollo)
-function cropPortraitWithSegmentation(image, face, backgroundColor, segmentation) {
-  const PORTRAIT_RATIO = 3 / 4;
-  const EXPANSION = 1.35;
+/**
+ * Recorta el retrato PRESERVANDO TRANSPARENCIA (sin fondo sólido)
+ */
+function cropPortraitTransparent(image, face) {
+  const EXPANSION_WIDTH = 1.5;
+  const EXPANSION_HEIGHT = 1.8;
+  const Y_OFFSET = -0.2;
 
   const centerX = face.x + face.width / 2;
-  const centerY = face.y + face.height / 2;
+  const faceTop = face.y;
+  const faceBottom = face.y + face.height;
+  const faceCenterY = faceTop + (faceBottom - faceTop) * (0.5 + Y_OFFSET);
 
-  let cropWidth = face.width * EXPANSION;
-  let cropHeight = cropWidth / PORTRAIT_RATIO;
+  let cropWidth = face.width * EXPANSION_WIDTH;
+  let cropHeight = face.height * EXPANSION_HEIGHT;
 
-  let x = centerX - cropWidth / 2;
-  let y = centerY - cropHeight / 2;
+  let squareSize = Math.min(cropWidth, cropHeight);
 
-  ({ x, y, cropWidth, cropHeight } = clampToImageBounds({
+  let x = centerX - squareSize / 2;
+  let y = faceCenterY - squareSize / 2;
+
+  ({ x, y, cropWidth: squareSize, cropHeight: squareSize } = clampToImageBounds({
     x,
     y,
-    width: cropWidth,
-    height: cropHeight,
+    width: squareSize,
+    height: squareSize,
     image,
   }));
 
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(cropWidth);
-  canvas.height = Math.round(cropHeight);
+  const OUTPUT_SIZE = 700;
+  canvas.width = OUTPUT_SIZE;
+  canvas.height = OUTPUT_SIZE;
+  const ctx = canvas.getContext('2d');
+
+  // NO rellenar - canvas permanece transparente
+  // Dibuja la imagen cuadrada directamente
+  ctx.drawImage(
+    image, 
+    Math.round(x), 
+    Math.round(y), 
+    Math.round(squareSize), 
+    Math.round(squareSize), 
+    0, 0, 
+    OUTPUT_SIZE, 
+    OUTPUT_SIZE
+  );
+
+  return canvas.toDataURL('image/png');
+}
+
+/**
+ * Genera PNG transparente (sin fondo)
+ * Mantiene la transparencia que Remove.bg ya generó
+ */
+export function createTransparentPNG(canvasDataUrl, backgroundColor) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const OUTPUT_SIZE = 700;
+      canvas.width = OUTPUT_SIZE;
+      canvas.height = OUTPUT_SIZE;
+      const ctx = canvas.getContext('2d');
+      
+      // Hacer canvas transparente (no rellenar con color)
+      ctx.clearRect(0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+      
+      // Dibujar imagen original directamente sin procesar
+      // La transparencia de Remove.bg se mantiene como está
+      ctx.drawImage(img, 0, 0, OUTPUT_SIZE, OUTPUT_SIZE);
+      
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.src = canvasDataUrl;
+  });
+}
+
+/**
+ * Convierte un color hexadecimal a RGB
+ */
+function parseHexColor(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16),
+  } : { r: 15, g: 23, b: 42 }; // Color por defecto
+}
+
+// Recorta el rostro usando segmentación BodyPix (para modo desarrollo) - encuadre cuadrado 1:1
+function cropPortraitWithSegmentation(image, face, backgroundColor, segmentation) {
+  const EXPANSION_WIDTH = 1.5; // expande más el ancho para incluir orejas y costados
+  const EXPANSION_HEIGHT = 1.8; // expande más el alto para incluir toda la cabeza
+  const Y_OFFSET = -0.2; // Desplaza el encuadre hacia arriba
+
+  const centerX = face.x + face.width / 2;
+  const faceTop = face.y;
+  const faceBottom = face.y + face.height;
+  
+  // Centra verticalmente pero con offset hacia arriba para incluir toda la cabeza
+  const faceCenterY = faceTop + (faceBottom - faceTop) * (0.5 + Y_OFFSET);
+
+  let cropWidth = face.width * EXPANSION_WIDTH;
+  let cropHeight = face.height * EXPANSION_HEIGHT;
+
+  // Para encuadre CUADRADO sin deformación:
+  // El lado del cuadrado es el mínimo entre ancho y alto disponible
+  let squareSize = Math.min(cropWidth, cropHeight);
+
+  let x = centerX - squareSize / 2;
+  let y = faceCenterY - squareSize / 2;
+
+  // Asegurar que el recorte cuadrado esté dentro de los límites de la imagen
+  ({ x, y, cropWidth: squareSize, cropHeight: squareSize } = clampToImageBounds({
+    x,
+    y,
+    width: squareSize,
+    height: squareSize,
+    image,
+  }));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(squareSize);
+  canvas.height = Math.round(squareSize);
   const ctx = canvas.getContext('2d');
 
   // 1) Rellena con color de fondo base
@@ -348,11 +506,11 @@ function cropPortraitWithSegmentation(image, face, backgroundColor, segmentation
     }
   }
   
-  // 3) Dibuja el canvas fuente al retrato final
+  // 3) Dibuja el canvas fuente al retrato final (cuadrado sin deformación)
   if (sourceCanvas) {
-    ctx.drawImage(sourceCanvas, Math.round(x), Math.round(y), Math.round(cropWidth), Math.round(cropHeight), 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(sourceCanvas, Math.round(x), Math.round(y), Math.round(squareSize), Math.round(squareSize), 0, 0, canvas.width, canvas.height);
   } else {
-    ctx.drawImage(image, Math.round(x), Math.round(y), Math.round(cropWidth), Math.round(cropHeight), 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, Math.round(x), Math.round(y), Math.round(squareSize), Math.round(squareSize), 0, 0, canvas.width, canvas.height);
   }
 
   return canvas.toDataURL('image/png');
