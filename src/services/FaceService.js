@@ -7,8 +7,10 @@ import * as tf from '@tensorflow/tfjs';
 
 // Configuración dinámica
 let config = {
-  devMode: import.meta.env.VITE_DEV_MODE === 'true',
+  // En build de producción preferimos FORZAR devMode=false para que los modelos se carguen desde S3
+  devMode: import.meta.env.PROD ? false : import.meta.env.VITE_DEV_MODE === 'true',
   apiKey: import.meta.env.VITE_REMOVEBG_API_KEY || '',
+  outputSize: Number(import.meta.env.VITE_OUTPUT_SIZE || 700),
 };
 
 /**
@@ -17,6 +19,21 @@ let config = {
 export function setConfig(newConfig) {
   config = { ...config, ...newConfig };
   console.log('⚙️ Configuración actualizada:', config);
+}
+
+export async function validateRemoveBgKey(apiKey) {
+  if (!apiKey) return null;
+  try {
+    const response = await fetch('https://api.remove.bg/v1.0/account', {
+      headers: {
+        'X-Api-Key': apiKey,
+      },
+    });
+    return response.ok;
+  } catch (err) {
+    console.warn('No se pudo validar la API key de remove.bg:', err);
+    return null;
+  }
 }
 
 /**
@@ -53,8 +70,15 @@ let bodyPixNet = null;
 export async function ensureFaceApiReady() {
   if (modelsLoaded) return;
 
+  // Usar ruta absoluta en producción
+  // En producción, SIEMPRE usar la ruta absoluta S3
+  let modelBase = import.meta.env.PROD
+    ? 'https://especialess3.lanacion.com.ar/Aplicaciones/CropApp7/dist/models/'
+    : '/models';
+  // Asegurar que termine con slash para que face-api construya bien las URLs internas
+  if (!modelBase.endsWith('/')) modelBase += '/';
   await Promise.all([
-    faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+    faceapi.nets.tinyFaceDetector.loadFromUri(modelBase),
     // Se podrían cargar más modelos (landmarks, expresiones) si se necesitan.
   ]);
 
@@ -69,7 +93,11 @@ async function ensureBodyPixReady() {
   await tf.ready();
   console.log('Cargando modelo BodyPix...');
   try {
-    bodyPixNet = await bodyPix.load();
+    // Usar ruta absoluta en producción
+    const modelUrl = config.devMode
+      ? undefined
+      : 'https://especialess3.lanacion.com.ar/Aplicaciones/CropApp7/dist/models/bodypix/model-stride16.json';
+    bodyPixNet = await bodyPix.load(modelUrl ? { modelUrl } : undefined);
     console.log('BodyPix cargado exitosamente');
   } catch (err) {
     console.error('Error al cargar BodyPix:', err);
@@ -106,28 +134,19 @@ export async function detectFaces(file) {
  * @param {File} file
  * @param {DetectedFace[]} faces
  * @param {string} [backgroundColor]
+ * @param {Object} [options]
+ * @param {boolean} [options.removeBackground]
  * @returns {Promise<PortraitCrop[]>}
  */
-export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f172a') {
+export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f172a', options = {}) {
   if (!faces.length) return [];
 
   const image = await fileToImageElement(file);
-  
-  // En modo desarrollo, usa BodyPix (sin requests)
-  if (config.devMode) {
-    console.log('🔧 MODO DESARROLLO: Usando BodyPix (sin requests)');
-    let segmentation = null;
-    try {
-      const net = await ensureBodyPixReady();
-      console.log('BodyPix cargado, procesando segmentación...');
-      segmentation = await net.estimatePersonSegmentation(image);
-      console.log('Segmentación completada con BodyPix');
-    } catch (err) {
-      console.warn('Error con BodyPix:', err);
-    }
+  const shouldRemoveBackground = Boolean(options.removeBackground);
 
+  if (!shouldRemoveBackground) {
     return faces.map((face) => {
-      const url = cropPortraitWithSegmentation(image, face, backgroundColor, segmentation);
+      const url = cropPortrait(image, face, backgroundColor);
       return {
         url,
         urlTransparent: url,
@@ -136,16 +155,17 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
     });
   }
 
-  // En producción, usa Remove.bg
-  console.log('🚀 MODO PRODUCCIÓN: Usando Remove.bg API');
+  console.log('🚀 Eliminando fondo con Remove.bg');
   let removedBgImage = null;
   try {
     console.log('Enviando imagen a Remove.bg...');
     removedBgImage = await removeBackgroundWithRemoveBg(file);
     console.log('Fondo removido exitosamente con Remove.bg');
   } catch (err) {
-    console.warn('No se pudo usar Remove.bg. Se usará BodyPix como fallback.', err);
-    // Fallback a BodyPix
+    if (!config.devMode) {
+      throw err;
+    }
+    console.warn('No se pudo usar Remove.bg. Se usará BodyPix como fallback (solo dev).', err);
     let segmentation = null;
     try {
       const net = await ensureBodyPixReady();
@@ -153,7 +173,7 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
     } catch (err2) {
       console.warn('Error con BodyPix fallback:', err2);
     }
-    
+
     return faces.map((face) => {
       const url = cropPortraitWithSegmentation(image, face, backgroundColor, segmentation);
       return {
@@ -165,15 +185,54 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
   }
 
   return faces.map((face) => {
-    // Generar AMBAS versiones: con fondo y transparente
-    const urlWithBackground = cropPortrait(removedBgImage || image, face, backgroundColor);
-    const urlTransparent = cropPortraitTransparent(removedBgImage || image, face);
+    const targetImage = removedBgImage || image;
+    const adjustedFace = scaleFaceForImage(face, image, targetImage);
+    const urlWithBackground = cropPortrait(targetImage, adjustedFace, backgroundColor);
+    let urlTransparent;
+    if (removedBgImage) {
+      urlTransparent = cropPortraitTransparent(removedBgImage, adjustedFace);
+    } else {
+      urlTransparent = cropPortraitTransparent(image, adjustedFace);
+    }
     return {
       url: urlWithBackground,
-      urlTransparent: urlTransparent,
+      urlTransparent,
       sourceName: file.name,
     };
   });
+}
+
+/**
+ * Remueve el fondo de una imagen completa (sin encuadrar).
+ * @param {File} file
+ * @param {string} [backgroundColor]
+ * @param {number} [outputWidth]
+ * @returns {Promise<{url: string, urlTransparent: string}>}
+ */
+export async function removeBackgroundFromFile(file, backgroundColor = '#ffffff', outputWidth) {
+  const targetWidth = getOutputWidth(outputWidth);
+  const removedBgImage = await removeBackgroundWithRemoveBg(file);
+  const urlTransparent = renderImageToDataUrl(removedBgImage, {
+    transparent: true,
+    width: targetWidth,
+  });
+  const url = renderImageToDataUrl(removedBgImage, {
+    backgroundColor,
+    width: targetWidth,
+  });
+  return { url, urlTransparent };
+}
+
+/**
+ * Redimensiona una imagen completa respetando el ancho elegido.
+ * @param {File} file
+ * @param {number} [outputWidth]
+ * @returns {Promise<string>}
+ */
+export async function resizeImageFile(file, outputWidth) {
+  const image = await fileToImageElement(file);
+  const targetWidth = getOutputWidth(outputWidth);
+  return renderImageToDataUrl(image, { width: targetWidth });
 }
 
 /**
@@ -189,8 +248,9 @@ async function removeBackgroundWithRemoveBg(file) {
 
   const formData = new FormData();
   formData.append('image_file', file);
-  formData.append('format', 'auto');
+  formData.append('format', 'png');
   formData.append('type', 'auto');
+  formData.append('size', 'auto');
 
   const response = await fetch('https://api.remove.bg/v1.0/removebg', {
     method: 'POST',
@@ -243,6 +303,7 @@ export async function optimizePortrait(portraitDataUrl) {
   return portraitDataUrl;
 }
 
+
 async function fileToImageElement(file) {
   return new Promise((resolve, reject) => {
     try {
@@ -275,6 +336,7 @@ async function fileToImageElement(file) {
   });
 }
 
+
 /**
  * Recorta el retrato con fondo sólido
  */
@@ -305,9 +367,9 @@ function cropPortrait(image, face, backgroundColor) {
   }));
 
   const canvas = document.createElement('canvas');
-  const OUTPUT_SIZE = 700;
-  canvas.width = OUTPUT_SIZE;
-  canvas.height = OUTPUT_SIZE;
+  const outputSize = getOutputSize(squareSize);
+  canvas.width = outputSize;
+  canvas.height = outputSize;
   const ctx = canvas.getContext('2d');
 
   // Rellena con color de fondo base
@@ -323,8 +385,8 @@ function cropPortrait(image, face, backgroundColor) {
     Math.round(squareSize), 
     Math.round(squareSize), 
     0, 0, 
-    OUTPUT_SIZE, 
-    OUTPUT_SIZE
+    outputSize, 
+    outputSize
   );
 
   return canvas.toDataURL('image/png');
@@ -333,7 +395,8 @@ function cropPortrait(image, face, backgroundColor) {
 /**
  * Recorta el retrato PRESERVANDO TRANSPARENCIA (sin fondo sólido)
  */
-function cropPortraitTransparent(image, face) {
+// Recorta el retrato PRESERVANDO TRANSPARENCIA usando segmentación BodyPix
+function cropPortraitTransparent(image, face, segmentation) {
   const EXPANSION_WIDTH = 1.5;
   const EXPANSION_HEIGHT = 1.8;
   const Y_OFFSET = -0.2;
@@ -360,23 +423,48 @@ function cropPortraitTransparent(image, face) {
   }));
 
   const canvas = document.createElement('canvas');
-  const OUTPUT_SIZE = 700;
-  canvas.width = OUTPUT_SIZE;
-  canvas.height = OUTPUT_SIZE;
+  const outputSize = getOutputSize(squareSize);
+  canvas.width = outputSize;
+  canvas.height = outputSize;
   const ctx = canvas.getContext('2d');
 
-  // NO rellenar - canvas permanece transparente
-  // Dibuja la imagen cuadrada directamente
+  // Dibuja la imagen recortada
   ctx.drawImage(
-    image, 
-    Math.round(x), 
-    Math.round(y), 
-    Math.round(squareSize), 
-    Math.round(squareSize), 
-    0, 0, 
-    OUTPUT_SIZE, 
-    OUTPUT_SIZE
+    image,
+    Math.round(x),
+    Math.round(y),
+    Math.round(squareSize),
+    Math.round(squareSize),
+    0, 0,
+    outputSize,
+    outputSize
   );
+
+  // Aplica la máscara de segmentación para transparencia
+  if (segmentation && segmentation.data) {
+    const imageData = ctx.getImageData(0, 0, outputSize, outputSize);
+    const data = imageData.data;
+    const segData = segmentation.data;
+    const segWidth = segmentation.width;
+    const segHeight = segmentation.height;
+    // Relación de escalado entre segmentación y canvas
+    const scaleX = outputSize / segWidth;
+    const scaleY = outputSize / segHeight;
+    for (let y = 0; y < outputSize; y++) {
+      for (let x = 0; x < outputSize; x++) {
+        const segX = Math.floor(x / scaleX);
+        const segY = Math.floor(y / scaleY);
+        const segIdx = segY * segWidth + segX;
+        const personConfidence = segData[segIdx];
+        const idx = (y * outputSize + x) * 4;
+        // Si la confianza es baja, hacer el píxel transparente
+        if (personConfidence < 0.5) {
+          data[idx + 3] = 0;
+        }
+      }
+    }
+    ctx.putImageData(imageData, 0, 0);
+  }
 
   return canvas.toDataURL('image/png');
 }
@@ -420,6 +508,28 @@ function parseHexColor(hex) {
   } : { r: 15, g: 23, b: 42 }; // Color por defecto
 }
 
+function getOutputWidth(outputWidth) {
+  const fallback = Number.isFinite(config.outputSize) ? config.outputSize : 700;
+  const requested = Number.isFinite(outputWidth) ? outputWidth : fallback;
+  return Math.max(1, Math.round(requested || fallback));
+}
+
+function renderImageToDataUrl(image, { width, backgroundColor, transparent } = {}) {
+  const targetWidth = width || image.width;
+  const scale = targetWidth / image.width;
+  const targetHeight = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext('2d');
+  if (!transparent) {
+    ctx.fillStyle = backgroundColor || '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/png');
+}
+
 // Recorta el rostro usando segmentación BodyPix (para modo desarrollo) - encuadre cuadrado 1:1
 function cropPortraitWithSegmentation(image, face, backgroundColor, segmentation) {
   const EXPANSION_WIDTH = 1.5; // expande más el ancho para incluir orejas y costados
@@ -453,8 +563,9 @@ function cropPortraitWithSegmentation(image, face, backgroundColor, segmentation
   }));
 
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(squareSize);
-  canvas.height = Math.round(squareSize);
+  const outputSize = getOutputSize(squareSize);
+  canvas.width = outputSize;
+  canvas.height = outputSize;
   const ctx = canvas.getContext('2d');
 
   // 1) Rellena con color de fondo base
@@ -508,9 +619,9 @@ function cropPortraitWithSegmentation(image, face, backgroundColor, segmentation
   
   // 3) Dibuja el canvas fuente al retrato final (cuadrado sin deformación)
   if (sourceCanvas) {
-    ctx.drawImage(sourceCanvas, Math.round(x), Math.round(y), Math.round(squareSize), Math.round(squareSize), 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(sourceCanvas, Math.round(x), Math.round(y), Math.round(squareSize), Math.round(squareSize), 0, 0, outputSize, outputSize);
   } else {
-    ctx.drawImage(image, Math.round(x), Math.round(y), Math.round(squareSize), Math.round(squareSize), 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, Math.round(x), Math.round(y), Math.round(squareSize), Math.round(squareSize), 0, 0, outputSize, outputSize);
   }
 
   return canvas.toDataURL('image/png');
@@ -544,6 +655,30 @@ function clampToImageBounds({ x, y, width, height, image }) {
     cropWidth: adjustedWidth,
     cropHeight: adjustedHeight,
   };
+}
+
+// Ajusta las coordenadas del rostro si la imagen objetivo tiene otra escala
+function scaleFaceForImage(face, sourceImage, targetImage) {
+  if (!targetImage || !sourceImage) return face;
+  if (sourceImage.width === targetImage.width && sourceImage.height === targetImage.height) {
+    return face;
+  }
+  const scaleX = targetImage.width / sourceImage.width;
+  const scaleY = targetImage.height / sourceImage.height;
+  return {
+    ...face,
+    x: face.x * scaleX,
+    y: face.y * scaleY,
+    width: face.width * scaleX,
+    height: face.height * scaleY,
+  };
+}
+
+function getOutputSize(size) {
+  const rawSize = Math.max(1, Math.round(size));
+  const outputSize = Number.isFinite(config.outputSize) ? config.outputSize : 700;
+  const normalizedSize = Math.max(1, Math.round(outputSize));
+  return normalizedSize || rawSize;
 }
 
 // Convierte la segmentación de BodyPix en un canvas de máscara (blanco = sujeto, transparente = fondo).
