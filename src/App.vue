@@ -29,7 +29,7 @@
         <div class="brand-copy">
           <div class="brand brand--image">
             <a class="brand__link" href="/" @click.prevent="resetAll">
-              <img :src="faceCutLogo" alt="FaceCut" />
+              <img class="brand__logo-home" :src="logoHome" alt="cortame la cara" />
             </a>
           </div>
           <h1 v-if="!originalFiles.length" class="hero__lede hero__lede--lead">
@@ -87,7 +87,7 @@
       <aside class="workspace__sidebar">
         <div class="brand brand--image brand--sidebar">
           <a class="brand__link" href="/" @click.prevent="resetAll">
-            <img :src="faceCutLogo" alt="FaceCut" />
+            <img :src="logoShort" alt="cortame la cara" />
           </a>
         </div>
         <div class="settings-panel">
@@ -124,6 +124,12 @@
               >
                 API KEY INVALIDA
               </p>
+              <p
+                v-show="apiKeyStatus === 'credits'"
+                class="settings__apikey-status settings__apikey-status--invalid"
+              >
+                CREDITOS AGOTADOS
+              </p>
             </div>
           </div>
 
@@ -133,6 +139,25 @@
           </div>
 
           <div class="settings-panel__divider"></div>
+
+          <div v-if="removeBackground" class="settings-panel__group">
+            <label class="color color--block">
+              <input
+                v-model="backgroundColor"
+                type="color"
+                aria-label="Fondo de la foto"
+                :disabled="downloadTransparent"
+              />
+              <span>Color de Fondo</span>
+            </label>
+
+            <label class="check check--block">
+              <input v-model="downloadTransparent" type="checkbox" />
+              <span>Transparente</span>
+            </label>
+          </div>
+
+          <div v-if="removeBackground" class="settings-panel__divider"></div>
 
           <button
             v-if="!isProcessed"
@@ -158,7 +183,32 @@
 
       <div class="workspace__preview">
         <div class="preview-panel" :class="{ 'preview-panel--processed': isProcessed }">
-          <p class="preview-panel__title">{{ batchLabel }}</p>
+          <div class="preview-panel__header">
+            <p class="preview-panel__title">{{ batchLabel }}</p>
+            <div class="preview-panel__controls">
+              <div class="preview-panel__size">
+                <span class="preview-panel__size-label">Tamaño de descarga</span>
+                <div class="preview-panel__size-row">
+                  <input
+                    v-model.number="outputSize"
+                    type="number"
+                    min="1"
+                    step="1"
+                  />
+                  <span>px de ancho</span>
+                </div>
+              </div>
+              <button
+                v-if="isProcessed"
+                class="download-button download-button--top"
+                :disabled="isProcessing"
+                @click="downloadAll"
+              >
+                DESCARGAR FOTOS
+                <img class="download-button__icon" :src="downloadIcon" alt="" />
+              </button>
+            </div>
+          </div>
           <div class="preview-panel__content" :class="{ 'preview-panel__content--single': !isProcessed }">
             <TransitionGroup name="thumb" tag="div" class="thumb-grid" appear>
               <article
@@ -216,11 +266,6 @@
             </div>
 
             <aside v-if="isProcessed" class="filters-panel">
-              <button class="download-button download-button--panel" :disabled="isProcessing" @click="downloadAll">
-                DESCARGAR TODAS LAS FOTOS
-                <img class="download-button__icon" :src="downloadIcon" alt="" />
-              </button>
-
               <h3 class="filters-panel__title">AJUSTES</h3>
 
               <label class="filters-panel__option">
@@ -238,6 +283,28 @@
               <div class="filters-panel__divider"></div>
 
               <div class="filters-panel__slider">
+                <span class="filters-panel__label">Exposición</span>
+                <input
+                  v-model.number="exposure"
+                  type="range"
+                  min="50"
+                  max="150"
+                  step="1"
+                />
+              </div>
+
+              <div class="filters-panel__slider">
+                <span class="filters-panel__label">Brillo</span>
+                <input
+                  v-model.number="brightness"
+                  type="range"
+                  min="50"
+                  max="150"
+                  step="1"
+                />
+              </div>
+
+              <div class="filters-panel__slider">
                 <span class="filters-panel__label">Contraste</span>
                 <input
                   v-model.number="contrast"
@@ -248,39 +315,26 @@
                 />
               </div>
 
-              <div v-if="removeBackground" class="filters-panel__divider"></div>
-
-              <div v-if="removeBackground" class="filters-panel__group">
-                <label class="color color--block">
-                  <input
-                    v-model="backgroundColor"
-                    type="color"
-                    aria-label="Fondo de la foto"
-                    :disabled="downloadTransparent"
-                  />
-                  <span>Color de Fondo</span>
-                </label>
-
-                <label class="check check--block">
-                  <input v-model="downloadTransparent" type="checkbox" />
-                  <span>Transparente</span>
-                </label>
+              <div class="filters-panel__slider">
+                <span class="filters-panel__label">Luces</span>
+                <input
+                  v-model.number="highlights"
+                  type="range"
+                  min="50"
+                  max="150"
+                  step="1"
+                />
               </div>
 
-              <div class="filters-panel__divider"></div>
-
-              <div class="filters-panel__size">
-                <span class="filters-panel__label filters-panel__label--small">TAMAÑO DE DESCARGA</span>
-                <div class="filters-panel__size-row">
-                  <span>Ancho</span>
-                  <input
-                    v-model.number="outputSize"
-                    type="number"
-                    min="1"
-                    step="1"
-                  />
-                  <span>px</span>
-                </div>
+              <div class="filters-panel__slider">
+                <span class="filters-panel__label">Sombras</span>
+                <input
+                  v-model.number="shadows"
+                  type="range"
+                  min="50"
+                  max="150"
+                  step="1"
+                />
               </div>
             </aside>
           </div>
@@ -426,7 +480,8 @@ import PhotoUploader from './components/PhotoUploader.vue';
 import explainerOne from './assets/image 1.png';
 import explainerTwo from './assets/image 2.png';
 import explainerThree from './assets/image 3.png';
-import faceCutLogo from './assets/faceCut.png';
+import logoHome from './assets/logoOkHome.png';
+import logoShort from './assets/LogoOKShort.png';
 import downloadIcon from './assets/descargar.svg';
 import warningIcon from './assets/warning.svg';
 import {
@@ -454,7 +509,11 @@ const removeBackground = ref(false);
 const downloadTransparent = ref(false);
 const filterBn = ref(false);
 const filterMultiply = ref(false);
+const exposure = ref(100);
+const brightness = ref(100);
 const contrast = ref(100);
+const highlights = ref(100);
+const shadows = ref(100);
 const outputSize = ref(Number(import.meta.env.VITE_OUTPUT_SIZE || 700));
 const apiKey = ref(import.meta.env.VITE_REMOVEBG_API_KEY || '');
 const devMode = ref(import.meta.env.VITE_DEV_MODE === 'true');
@@ -466,6 +525,9 @@ const showTerms = ref(false);
 const contactName = ref('');
 const contactEmail = ref('');
 const contactMessage = ref('');
+let processingRunId = 0;
+let uploadSessionId = 0;
+const debugProcessing = import.meta.env.DEV;
 
 const processLabel = computed(() => {
   if (isProcessing.value) return 'PROCESANDO';
@@ -489,7 +551,11 @@ const invalidLabel = computed(() => {
 
 const previewFilter = computed(() => {
   const filters = [];
+  if (exposure.value !== 100) filters.push(`brightness(${exposure.value}%)`);
+  if (brightness.value !== 100) filters.push(`brightness(${brightness.value}%)`);
   if (contrast.value !== 100) filters.push(`contrast(${contrast.value}%)`);
+  if (highlights.value !== 100) filters.push(`brightness(${highlights.value}%)`);
+  if (shadows.value !== 100) filters.push(`contrast(${shadows.value}%)`);
   if (filterBn.value) filters.push('grayscale(1)');
   return filters.length ? filters.join(' ') : 'none';
 });
@@ -508,22 +574,22 @@ const explainerImages = [
 ];
 
 const displayItems = computed(() => {
-  const processedByName = new Map();
+  const processedBySourceId = new Map();
   processedFiles.value.forEach((item) => {
-    const key = item.name || 'output';
-    if (!processedByName.has(key)) {
-      processedByName.set(key, []);
+    const key = item.sourceId || item.id || item.name || 'output';
+    if (!processedBySourceId.has(key)) {
+      processedBySourceId.set(key, []);
     }
-    processedByName.get(key).push(item);
+    processedBySourceId.get(key).push(item);
   });
 
   const baseItems = originalFiles.value.map((item, index) => {
-    const bucket = processedByName.get(item.name) || [];
+    const bucket = processedBySourceId.get(item.sourceId) || [];
     const primary = bucket.shift();
     if (bucket.length) {
-      processedByName.set(item.name, bucket);
+      processedBySourceId.set(item.sourceId, bucket);
     } else {
-      processedByName.delete(item.name);
+      processedBySourceId.delete(item.sourceId);
     }
 
     const rawUrl = item.url;
@@ -534,16 +600,23 @@ const displayItems = computed(() => {
     let crossfade = false;
 
     if (primary) {
+      const mode = primary.mode || 'original';
+      const supportsTransparency = mode === 'crop-remove-bg' || mode === 'remove-bg';
       url = primary.url;
-      urlTransparent = primary.urlTransparent || primary.url;
-      processedUrl = primary.urlTransparent || primary.url;
-      hasTransparent = Boolean(primary.urlTransparent) && removeBackground.value;
+      urlTransparent = supportsTransparency
+        ? (primary.urlTransparent || primary.url)
+        : primary.url;
+      processedUrl = supportsTransparency
+        ? (primary.urlTransparent || primary.url)
+        : primary.url;
+      hasTransparent = supportsTransparency;
       crossfade = true;
     }
 
     return {
       id: item.id || `${item.name}-${index}`,
       name: item.name,
+      mode: primary?.mode || 'original',
       sizeLabel: item.sizeLabel,
       url,
       urlTransparent,
@@ -555,15 +628,22 @@ const displayItems = computed(() => {
   });
 
   const extraItems = [];
-  processedByName.forEach((items, name) => {
+  processedBySourceId.forEach((items) => {
     items.forEach((item, index) => {
+      const mode = item.mode || 'unknown';
+      const supportsTransparency = mode === 'crop-remove-bg' || mode === 'remove-bg';
       const url = item.url;
-      const urlTransparent = item.urlTransparent || item.url;
-      const processedUrl = item.urlTransparent || item.url;
-      const hasTransparent = Boolean(item.urlTransparent) && removeBackground.value;
+      const urlTransparent = supportsTransparency
+        ? (item.urlTransparent || item.url)
+        : item.url;
+      const processedUrl = supportsTransparency
+        ? (item.urlTransparent || item.url)
+        : item.url;
+      const hasTransparent = supportsTransparency;
       extraItems.push({
-        id: item.id || `${name}-extra-${index}`,
-        name,
+        id: item.id || `${item.sourceId || item.name || 'output'}-extra-${index}`,
+        name: item.name,
+        mode: item.mode || 'unknown',
         sizeLabel: item.sizeLabel,
         url,
         urlTransparent,
@@ -578,6 +658,18 @@ const displayItems = computed(() => {
   return [...baseItems, ...extraItems];
 });
 
+watch(displayItems, (items) => {
+  logProcessing('display-items', items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    mode: item.mode,
+    hasTransparent: item.hasTransparent,
+    crossfade: item.crossfade,
+    rawUrlPrefix: item.rawUrl?.slice(0, 48),
+    processedUrlPrefix: item.processedUrl?.slice(0, 48),
+  })));
+});
+
 watch([devMode, apiKey, outputSize], ([newMode, newKey, newOutputSize]) => {
   setConfig({
     devMode: newMode,
@@ -586,6 +678,8 @@ watch([devMode, apiKey, outputSize], ([newMode, newKey, newOutputSize]) => {
   });
   if (newKey) {
     localStorage.setItem('removebg_api_key', newKey);
+  } else {
+    localStorage.removeItem('removebg_api_key');
   }
   localStorage.setItem('output_size', String(newOutputSize || 1));
 }, { immediate: true });
@@ -598,32 +692,44 @@ watch([apiKey, removeBackground], ([newKey, enabled]) => {
   clearTimeout(apiKeyTimer);
   apiKeyStatus.value = 'checking';
   apiKeyTimer = setTimeout(async () => {
-    const result = await validateRemoveBgKey(newKey);
-    if (result === null) {
-      apiKeyStatus.value = 'idle';
-      return;
-    }
-    apiKeyStatus.value = result ? 'valid' : 'invalid';
-  }, 500);
+  const result = await validateRemoveBgKey(newKey);
+  if (result === null) {
+    apiKeyStatus.value = 'idle';
+    return;
+  }
+  if (result === 'credits') {
+    apiKeyStatus.value = 'credits';
+    return;
+  }
+  apiKeyStatus.value = result ? 'valid' : 'invalid';
+}, 500);
 });
 
 watch(
-  [cropFace, removeBackground, backgroundColor, downloadTransparent, outputSize],
-  ([newCrop, newRemove, newBg, newTransparent, newSize], [oldCrop, oldRemove, oldBg, oldTransparent, oldSize]) => {
-    if (!isProcessed.value) return;
+  [cropFace, removeBackground],
+  ([newCrop, newRemove], [oldCrop, oldRemove]) => {
     const modeChanged = newCrop !== oldCrop || newRemove !== oldRemove;
-    const sizeChanged = newSize !== oldSize;
-
-    const shouldReset = modeChanged || sizeChanged;
-
-    if (shouldReset) {
-      isProcessed.value = false;
-      processedFiles.value = [];
+    if (!modeChanged) return;
+    logProcessing('mode-changed', {
+      from: { cropFace: oldCrop, removeBackground: oldRemove },
+      to: { cropFace: newCrop, removeBackground: newRemove },
+      isProcessing: isProcessing.value,
+      isProcessed: isProcessed.value,
+    });
+    if (isProcessing.value) {
+      cancelProcessingRun();
     }
+    if (!isProcessed.value) return;
+    isProcessed.value = false;
+    processedFiles.value = [];
   },
 );
 
 watch(removeBackground, (value) => {
+  logProcessing('remove-background-toggle', {
+    value,
+    downloadTransparent: downloadTransparent.value,
+  });
   if (!value) {
     downloadTransparent.value = false;
   }
@@ -660,22 +766,57 @@ function clearOriginalPreviews() {
   });
 }
 
+function logProcessing(event, payload = {}) {
+  if (!debugProcessing) return;
+  console.log(`[GridFaces] ${event}`, payload);
+}
+
+function cancelProcessingRun() {
+  logProcessing('cancel-run', {
+    currentRunId: processingRunId,
+    isProcessing: isProcessing.value,
+    originalCount: originalFiles.value.length,
+    processedCount: processedFiles.value.length,
+  });
+  processingRunId += 1;
+  isProcessing.value = false;
+}
+
 function handleFiles(files) {
+  cancelProcessingRun();
   errorMessage.value = '';
   isProcessed.value = false;
   processedFiles.value = [];
   progress.value = 0;
+  uploadSessionId += 1;
 
   clearOriginalPreviews();
 
   const incomingFiles = Array.from(files || []);
   const validImages = incomingFiles.filter((file) => isValidImage(file));
   invalidFilesCount.value = Math.max(0, incomingFiles.length - validImages.length);
+  logProcessing('files-selected', {
+    incoming: incomingFiles.map((file) => ({
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    })),
+    validCount: validImages.length,
+    invalidCount: invalidFilesCount.value,
+    currentOptions: {
+      cropFace: cropFace.value,
+      removeBackground: removeBackground.value,
+      backgroundColor: backgroundColor.value,
+      outputSize: outputSize.value,
+    },
+  });
 
   originalFiles.value = validImages.map((file, index) => {
     const previewUrl = URL.createObjectURL(file);
+    const sourceId = `upload-${uploadSessionId}-${index}-${file.name}`;
     return {
-      id: `${file.name}-${index}`,
+      id: sourceId,
+      sourceId,
       file,
       name: file.name,
       size: file.size,
@@ -712,6 +853,20 @@ async function processImages() {
     return;
   }
 
+  const runId = ++processingRunId;
+  const processConfig = {
+    cropFace: cropFace.value,
+    removeBackground: removeBackground.value,
+    backgroundColor: backgroundColor.value,
+    outputSize: outputSize.value,
+  };
+  logProcessing('process-start', {
+    runId,
+    files: originalFiles.value.map((item) => item.name),
+    processConfig,
+    apiKeyStatus: apiKeyStatus.value,
+  });
+
   isProcessing.value = true;
   progress.value = 0;
   errorMessage.value = '';
@@ -722,14 +877,41 @@ async function processImages() {
 
   try {
     for (const item of originalFiles.value) {
-      const { file, name, size, sizeLabel, url } = item;
-      if (cropFace.value) {
+      const { file, sourceId, name, sizeLabel, url } = item;
+      if (runId !== processingRunId) {
+        logProcessing('process-abort-before-file', { runId, name, processingRunId });
+        return;
+      }
+      logProcessing('file-start', {
+        runId,
+        name,
+        processConfig,
+      });
+
+      if (processConfig.cropFace) {
         const faces = await detectFaces(file);
+        if (runId !== processingRunId) {
+          logProcessing('process-abort-after-detect', { runId, name, processingRunId });
+          return;
+        }
+        logProcessing('faces-detected', {
+          runId,
+          name,
+          count: faces.length,
+          removeBackground: processConfig.removeBackground,
+        });
         if (!faces.length) {
+          logProcessing('file-result-original', {
+            runId,
+            name,
+            reason: 'no_faces',
+          });
           processedFiles.value.push({
-            id: `${name}-${completed}`,
+            id: `${sourceId}-original-${completed}`,
+            sourceId,
+            mode: 'original',
             url,
-            urlTransparent: url,
+            urlTransparent: null,
             name,
             sizeLabel,
           });
@@ -737,38 +919,74 @@ async function processImages() {
           const crops = await cropFacesToPortraits(
             file,
             faces,
-            backgroundColor.value,
-            { removeBackground: removeBackground.value },
+            processConfig.backgroundColor,
+            { removeBackground: processConfig.removeBackground },
           );
+          if (runId !== processingRunId) {
+            logProcessing('process-abort-after-crop', { runId, name, processingRunId });
+            return;
+          }
+          logProcessing('file-result-crops', {
+            runId,
+            name,
+            cropCount: crops.length,
+            removeBackground: processConfig.removeBackground,
+          });
           processedFiles.value.push(
             ...crops.map((crop, index) => ({
-              id: `${name}-${index}`,
+              id: `${sourceId}-crop-${index}`,
+              sourceId,
+              mode: processConfig.removeBackground ? 'crop-remove-bg' : 'crop',
               url: crop.url,
-              urlTransparent: crop.urlTransparent || crop.url,
+              urlTransparent: processConfig.removeBackground
+                ? (crop.urlTransparent || crop.url)
+                : null,
               name,
               sizeLabel,
             })),
           );
         }
-      } else if (removeBackground.value) {
+      } else if (processConfig.removeBackground) {
         const removed = await removeBackgroundFromFile(
           file,
-          backgroundColor.value,
-          outputSize.value,
+          processConfig.backgroundColor,
+          processConfig.outputSize,
         );
+        if (runId !== processingRunId) {
+          logProcessing('process-abort-after-remove-bg', { runId, name, processingRunId });
+          return;
+        }
+        logProcessing('file-result-remove-bg', {
+          runId,
+          name,
+          outputSize: processConfig.outputSize,
+        });
         processedFiles.value.push({
-          id: `${name}-${completed}`,
+          id: `${sourceId}-remove-bg-${completed}`,
+          sourceId,
+          mode: 'remove-bg',
           url: removed.url,
           urlTransparent: removed.urlTransparent,
           name,
           sizeLabel,
         });
       } else {
-        const resized = await resizeImageFile(file, outputSize.value);
+        const resized = await resizeImageFile(file, processConfig.outputSize);
+        if (runId !== processingRunId) {
+          logProcessing('process-abort-after-resize', { runId, name, processingRunId });
+          return;
+        }
+        logProcessing('file-result-resize', {
+          runId,
+          name,
+          outputSize: processConfig.outputSize,
+        });
         processedFiles.value.push({
-          id: `${name}-${completed}`,
+          id: `${sourceId}-resize-${completed}`,
+          sourceId,
+          mode: 'resize',
           url: resized,
-          urlTransparent: resized,
+          urlTransparent: null,
           name,
           sizeLabel,
         });
@@ -776,15 +994,51 @@ async function processImages() {
 
       completed += 1;
       progress.value = Math.round((completed / total) * 100);
+      logProcessing('file-complete', {
+        runId,
+        name,
+        completed,
+        total,
+        progress: progress.value,
+      });
     }
 
+    if (runId !== processingRunId) {
+      logProcessing('process-abort-before-finish', { runId, processingRunId });
+      return;
+    }
     isProcessed.value = true;
     invalidFilesCount.value = 0;
+    logProcessing('process-finish', {
+      runId,
+      processedCount: processedFiles.value.length,
+    });
   } catch (err) {
+    if (runId !== processingRunId) {
+      logProcessing('process-abort-on-error', { runId, processingRunId });
+      return;
+    }
+    logProcessing('process-error', {
+      runId,
+      message: err?.message,
+      code: err?.code,
+    });
     console.error(err);
+    if (err && err.code === 'CREDITS_EXHAUSTED') {
+      apiKeyStatus.value = 'credits';
+      errorMessage.value = 'Créditos agotados en remove.bg. Recarga tu cuenta.';
+      return;
+    }
     errorMessage.value = 'Ocurrió un error procesando las imágenes. Revisa la consola para más detalles.';
   } finally {
-    isProcessing.value = false;
+    if (runId === processingRunId) {
+      isProcessing.value = false;
+      logProcessing('process-finally', {
+        runId,
+        isProcessed: isProcessed.value,
+        processedCount: processedFiles.value.length,
+      });
+    }
   }
 }
 
@@ -822,8 +1076,8 @@ async function downloadAll() {
 }
 
 function resetAll() {
+  cancelProcessingRun();
   errorMessage.value = '';
-  isProcessing.value = false;
   isProcessed.value = false;
   progress.value = 0;
   processedFiles.value = [];
@@ -834,6 +1088,7 @@ function resetAll() {
 }
 
 function startEditing() {
+  cancelProcessingRun();
   isProcessed.value = false;
   processedFiles.value = [];
 }
@@ -855,12 +1110,22 @@ function formatSize(bytes) {
 }
 
 function hasActiveFilters() {
-  return filterBn.value || activeMultiply.value || contrast.value !== 100;
+  return filterBn.value
+    || activeMultiply.value
+    || exposure.value !== 100
+    || brightness.value !== 100
+    || contrast.value !== 100
+    || highlights.value !== 100
+    || shadows.value !== 100;
 }
 
 function buildCanvasFilter() {
   const filters = [];
+  if (exposure.value !== 100) filters.push(`brightness(${exposure.value}%)`);
+  if (brightness.value !== 100) filters.push(`brightness(${brightness.value}%)`);
   if (contrast.value !== 100) filters.push(`contrast(${contrast.value}%)`);
+  if (highlights.value !== 100) filters.push(`brightness(${highlights.value}%)`);
+  if (shadows.value !== 100) filters.push(`contrast(${shadows.value}%)`);
   if (filterBn.value) filters.push('grayscale(1)');
   return filters.length ? filters.join(' ') : 'none';
 }
@@ -890,14 +1155,21 @@ async function buildFilteredDownload(portrait, transparent) {
     return { url: baseUrl, revoke: false };
   }
 
-  if (!hasActiveFilters() && !needsBackgroundFill) {
-    return { url: baseUrl, revoke: false };
-  }
-
   const img = await loadImage(baseUrl);
   const canvas = document.createElement('canvas');
-  canvas.width = img.naturalWidth || img.width;
-  canvas.height = img.naturalHeight || img.height;
+  const naturalWidth = img.naturalWidth || img.width;
+  const naturalHeight = img.naturalHeight || img.height;
+  const requestedWidth = Number(outputSize.value);
+  const targetWidth = Number.isFinite(requestedWidth) && requestedWidth > 0
+    ? Math.round(requestedWidth)
+    : naturalWidth;
+  if (!hasActiveFilters() && !needsBackgroundFill && targetWidth === naturalWidth) {
+    return { url: baseUrl, revoke: false };
+  }
+  const scale = targetWidth / naturalWidth;
+  const targetHeight = Math.max(1, Math.round(naturalHeight * scale));
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
 
   const ctx = canvas.getContext('2d');
   if (!ctx) {
@@ -1051,7 +1323,7 @@ h1 {
 }
 
 .brand-copy {
-  max-width: 350px;
+  max-width: 520px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1083,9 +1355,18 @@ h1 {
 
 .brand--image img {
   display: block;
-  width: 215px;
+  width: 350px;
   height: auto;
   margin-bottom: 10px;
+}
+
+.brand--sidebar img {
+  width: 215px;
+}
+
+.brand__logo-home {
+  width: 700px;
+  max-width: none;
 }
 
 .hero__lede {
@@ -1231,17 +1512,67 @@ h1 {
   position: relative;
 }
 
+.preview-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px 6px 22px;
+  margin-bottom: 28px;
+  border-bottom: 1px dashed #cfcfcf;
+}
+
+.preview-panel__controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
 .preview-panel__title {
-  font-size: 12px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  margin: 0 0 18px;
+  letter-spacing: 0.02em;
+  margin: 0;
   font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.preview-panel__size {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.preview-panel__size-label {
+  font-size: 13px;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+.preview-panel__size-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.preview-panel__size-row input {
+  width: 70px;
+  padding: 8px 10px;
+  border: 1px solid #bdbdbd;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .preview-panel__content {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
+  grid-template-columns: minmax(0, 1fr) 260px;
   gap: 48px;
   align-items: stretch;
   flex: 1;
@@ -1444,6 +1775,7 @@ h1 {
 }
 
 .filters-panel {
+  border-left: 1px dashed #bfbfbf;
   padding-left: 24px;
   display: flex;
   flex-direction: column;
@@ -1452,13 +1784,7 @@ h1 {
 }
 
 .preview-panel--processed::after {
-  content: '';
-  position: absolute;
-  top: 18px;
-  bottom: 24px;
-  right: 247px;
-  border-left: 1px dashed #bfbfbf;
-  pointer-events: none;
+  display: none;
 }
 
 .filters-panel__title {
@@ -1494,12 +1820,6 @@ h1 {
   gap: 10px;
 }
 
-.filters-panel__group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
 .filters-panel__label {
   font-size: 14px;
   font-weight: 600;
@@ -1514,28 +1834,6 @@ h1 {
 .filters-panel__slider input[type='range'] {
   width: 100%;
   accent-color: #111111;
-}
-
-.filters-panel__size {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.filters-panel__size-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  font-family: 'Montserrat', Arial, sans-serif;
-}
-
-.filters-panel__size-row input {
-  width: 70px;
-  padding: 6px 10px;
-  border: 1px solid #bdbdbd;
-  text-align: center;
-  font-size: 14px;
 }
 
 
@@ -1827,6 +2125,13 @@ h1 {
   width: 100%;
   justify-content: center;
   margin-bottom: 10px;
+}
+
+.download-button--top {
+  border-radius: 999px;
+  padding: 0 26px;
+  min-width: 210px;
+  justify-self: end;
 }
 .download-button__icon {
   width: 16px;
@@ -2121,6 +2426,27 @@ h1 {
 
   .preview-panel__content {
     grid-template-columns: 1fr;
+  }
+
+  .preview-panel__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .preview-panel__controls {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 14px;
+  }
+
+  .preview-panel__size {
+    flex-wrap: wrap;
+  }
+
+  .download-button--top {
+    width: 100%;
+    justify-content: center;
   }
 
   .filters-panel {

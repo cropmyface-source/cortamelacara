@@ -12,6 +12,12 @@ let config = {
   apiKey: import.meta.env.VITE_REMOVEBG_API_KEY || '',
   outputSize: Number(import.meta.env.VITE_OUTPUT_SIZE || 700),
 };
+const debugProcessing = import.meta.env.DEV;
+
+function logFaceService(event, payload = {}) {
+  if (!debugProcessing) return;
+  console.log(`[FaceService] ${event}`, payload);
+}
 
 /**
  * Actualiza la configuración dinámicamente desde el front
@@ -29,6 +35,7 @@ export async function validateRemoveBgKey(apiKey) {
         'X-Api-Key': apiKey,
       },
     });
+    if (response.status === 402) return 'credits';
     return response.ok;
   } catch (err) {
     console.warn('No se pudo validar la API key de remove.bg:', err);
@@ -117,16 +124,97 @@ export async function detectFaces(file) {
 
   const detections = await faceapi.detectAllFaces(
     image,
-    new faceapi.TinyFaceDetectorOptions(),
+    new faceapi.TinyFaceDetectorOptions({
+      inputSize: 416,
+      scoreThreshold: 0.65,
+    }),
   );
 
-  return detections.map((det) => ({
+  const faces = detections.map((det) => ({
     x: det.box.x,
     y: det.box.y,
     width: det.box.width,
     height: det.box.height,
     score: det.score,
   }));
+
+  const dedupedFaces = dedupeFaceDetections(faces);
+  logFaceService('detect-faces', {
+    fileName: file.name,
+    detected: faces.length,
+    deduped: dedupedFaces.length,
+  });
+  return dedupedFaces;
+}
+
+function dedupeFaceDetections(faces) {
+  if (faces.length < 2) return faces;
+
+  const sortedFaces = [...faces].sort((a, b) => {
+    const scoreDiff = (b.score || 0) - (a.score || 0);
+    if (scoreDiff !== 0) return scoreDiff;
+    return (b.width * b.height) - (a.width * a.height);
+  });
+
+  const result = [];
+  for (const face of sortedFaces) {
+    const overlapsExisting = result.some((keptFace) => isSameFaceDetection(face, keptFace));
+    if (!overlapsExisting) {
+      result.push(face);
+    }
+  }
+
+  return result;
+}
+
+function isSameFaceDetection(a, b) {
+  const overlapArea = getIntersectionArea(a, b);
+  const iou = getIntersectionOverUnion(a, b, overlapArea);
+  const contains = containsDetection(a, b) || containsDetection(b, a);
+  const centerDistance = getCenterDistance(a, b);
+  const minSize = Math.min(
+    Math.min(a.width, a.height),
+    Math.min(b.width, b.height),
+  );
+  const centersAreTooClose = centerDistance < minSize * 0.35;
+
+  return iou >= 0.3 || contains || (overlapArea > 0 && centersAreTooClose);
+}
+
+function getIntersectionArea(a, b) {
+  const left = Math.max(a.x, b.x);
+  const top = Math.max(a.y, b.y);
+  const right = Math.min(a.x + a.width, b.x + b.width);
+  const bottom = Math.min(a.y + a.height, b.y + b.height);
+
+  const width = right - left;
+  const height = bottom - top;
+  if (width <= 0 || height <= 0) return 0;
+  return width * height;
+}
+
+function getIntersectionOverUnion(a, b, intersectionArea = getIntersectionArea(a, b)) {
+  if (!intersectionArea) return 0;
+  const areaA = a.width * a.height;
+  const areaB = b.width * b.height;
+  const union = areaA + areaB - intersectionArea;
+  if (!union) return 0;
+  return intersectionArea / union;
+}
+
+function containsDetection(container, inner) {
+  return inner.x >= container.x
+    && inner.y >= container.y
+    && inner.x + inner.width <= container.x + container.width
+    && inner.y + inner.height <= container.y + container.height;
+}
+
+function getCenterDistance(a, b) {
+  const centerAX = a.x + a.width / 2;
+  const centerAY = a.y + a.height / 2;
+  const centerBX = b.x + b.width / 2;
+  const centerBY = b.y + b.height / 2;
+  return Math.hypot(centerAX - centerBX, centerAY - centerBY);
 }
 
 /**
@@ -143,16 +231,29 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
 
   const image = await fileToImageElement(file);
   const shouldRemoveBackground = Boolean(options.removeBackground);
+  logFaceService('crop-start', {
+    fileName: file.name,
+    faces: faces.length,
+    backgroundColor,
+    shouldRemoveBackground,
+  });
 
   if (!shouldRemoveBackground) {
-    return faces.map((face) => {
-      const url = cropPortrait(image, face, backgroundColor);
+    const result = faces.map((face) => {
+      const url = cropPortrait(image, face);
       return {
         url,
         urlTransparent: url,
         sourceName: file.name,
       };
     });
+    logFaceService('crop-finish', {
+      fileName: file.name,
+      mode: 'crop',
+      count: result.length,
+      sampleUrlPrefix: result[0]?.url?.slice(0, 48),
+    });
+    return result;
   }
 
   console.log('🚀 Eliminando fondo con Remove.bg');
@@ -184,7 +285,7 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
     });
   }
 
-  return faces.map((face) => {
+  const result = faces.map((face) => {
     const targetImage = removedBgImage || image;
     const adjustedFace = scaleFaceForImage(face, image, targetImage);
     const urlWithBackground = cropPortrait(targetImage, adjustedFace, backgroundColor);
@@ -200,6 +301,14 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
       sourceName: file.name,
     };
   });
+  logFaceService('crop-finish', {
+    fileName: file.name,
+    mode: 'crop-remove-bg',
+    count: result.length,
+    sampleUrlPrefix: result[0]?.url?.slice(0, 48),
+    sampleTransparentPrefix: result[0]?.urlTransparent?.slice(0, 48),
+  });
+  return result;
 }
 
 /**
@@ -211,6 +320,11 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
  */
 export async function removeBackgroundFromFile(file, backgroundColor = '#ffffff', outputWidth) {
   const targetWidth = getOutputWidth(outputWidth);
+  logFaceService('remove-bg-start', {
+    fileName: file.name,
+    backgroundColor,
+    outputWidth: targetWidth,
+  });
   const removedBgImage = await removeBackgroundWithRemoveBg(file);
   const urlTransparent = renderImageToDataUrl(removedBgImage, {
     transparent: true,
@@ -219,6 +333,12 @@ export async function removeBackgroundFromFile(file, backgroundColor = '#ffffff'
   const url = renderImageToDataUrl(removedBgImage, {
     backgroundColor,
     width: targetWidth,
+  });
+  logFaceService('remove-bg-finish', {
+    fileName: file.name,
+    outputWidth: targetWidth,
+    urlPrefix: url.slice(0, 48),
+    transparentPrefix: urlTransparent.slice(0, 48),
   });
   return { url, urlTransparent };
 }
@@ -232,7 +352,13 @@ export async function removeBackgroundFromFile(file, backgroundColor = '#ffffff'
 export async function resizeImageFile(file, outputWidth) {
   const image = await fileToImageElement(file);
   const targetWidth = getOutputWidth(outputWidth);
-  return renderImageToDataUrl(image, { width: targetWidth });
+  const url = renderImageToDataUrl(image, { width: targetWidth });
+  logFaceService('resize-finish', {
+    fileName: file.name,
+    outputWidth: targetWidth,
+    urlPrefix: url.slice(0, 48),
+  });
+  return url;
 }
 
 /**
@@ -266,7 +392,9 @@ async function removeBackgroundWithRemoveBg(file) {
     if (response.status === 401) {
       throw new Error('API key inválida o expirada. Verifica tu API Key de Remove.bg');
     } else if (response.status === 402) {
-      throw new Error('Créditos agotados en Remove.bg. Recarga tu cuenta.');
+      const err = new Error('Créditos agotados en Remove.bg. Recarga tu cuenta.');
+      err.code = 'CREDITS_EXHAUSTED';
+      throw err;
     } else {
       throw new Error(`Remove.bg API error: ${response.statusText} (${response.status})`);
     }
@@ -338,7 +466,7 @@ async function fileToImageElement(file) {
 
 
 /**
- * Recorta el retrato con fondo sólido
+ * Recorta el retrato. Si se pasa color, rellena el fondo; si no, conserva la transparencia original.
  */
 function cropPortrait(image, face, backgroundColor) {
   const EXPANSION_WIDTH = 1.5;
@@ -372,11 +500,13 @@ function cropPortrait(image, face, backgroundColor) {
   canvas.height = outputSize;
   const ctx = canvas.getContext('2d');
 
-  // Rellena con color de fondo base
-  ctx.fillStyle = backgroundColor;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (backgroundColor) {
+    ctx.fillStyle = backgroundColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
 
-  // Dibuja la imagen cuadrada
   ctx.globalCompositeOperation = 'over';
   ctx.drawImage(
     image, 

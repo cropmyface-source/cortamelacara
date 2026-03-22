@@ -38,8 +38,10 @@ const props = defineProps({
 const isDragActive = ref(false);
 
 function onFilesChange(event) {
-  const files = Array.from(event.target.files || []);
+  const input = event.target;
+  const files = Array.from(input.files || []);
   emit('files-selected', files);
+  input.value = '';
 }
 
 function onDragEnter() {
