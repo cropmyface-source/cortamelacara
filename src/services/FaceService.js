@@ -9,10 +9,11 @@ import * as tf from '@tensorflow/tfjs';
 let config = {
   // En build de producción preferimos FORZAR devMode=false para que los modelos se carguen desde S3
   devMode: import.meta.env.PROD ? false : import.meta.env.VITE_DEV_MODE === 'true',
-  apiKey: import.meta.env.VITE_REMOVEBG_API_KEY || '',
   outputSize: Number(import.meta.env.VITE_OUTPUT_SIZE || 700),
 };
 const debugProcessing = import.meta.env.DEV;
+let backgroundRemovalPreloadPromise = null;
+let backgroundRemovalModulePromise = null;
 
 function logFaceService(event, payload = {}) {
   if (!debugProcessing) return;
@@ -27,20 +28,15 @@ export function setConfig(newConfig) {
   console.log('⚙️ Configuración actualizada:', config);
 }
 
-export async function validateRemoveBgKey(apiKey) {
-  if (!apiKey) return null;
-  try {
-    const response = await fetch('https://api.remove.bg/v1.0/account', {
-      headers: {
-        'X-Api-Key': apiKey,
-      },
+export async function preloadRemoveBackgroundAssets() {
+  const { preload } = await loadBackgroundRemovalModule();
+  if (!backgroundRemovalPreloadPromise) {
+    backgroundRemovalPreloadPromise = preload(getBackgroundRemovalConfig()).catch((err) => {
+      backgroundRemovalPreloadPromise = null;
+      throw err;
     });
-    if (response.status === 402) return 'credits';
-    return response.ok;
-  } catch (err) {
-    console.warn('No se pudo validar la API key de remove.bg:', err);
-    return null;
   }
+  return backgroundRemovalPreloadPromise;
 }
 
 /**
@@ -239,12 +235,19 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
   });
 
   if (!shouldRemoveBackground) {
+    const editorSourceUrl = renderImageToDataUrl(image, {
+      transparent: true,
+      width: image.width,
+    });
     const result = faces.map((face) => {
-      const url = cropPortrait(image, face);
+      const cropBox = getPortraitCropBox(face, image);
+      const url = cropPortraitFromBox(image, cropBox);
       return {
         url,
         urlTransparent: url,
         sourceName: file.name,
+        editorCrop: cropBox,
+        editorSourceUrl,
       };
     });
     logFaceService('crop-finish', {
@@ -256,17 +259,16 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
     return result;
   }
 
-  console.log('🚀 Eliminando fondo con Remove.bg');
+  console.log('🚀 Eliminando fondo en el navegador');
   let removedBgImage = null;
   try {
-    console.log('Enviando imagen a Remove.bg...');
-    removedBgImage = await removeBackgroundWithRemoveBg(file);
-    console.log('Fondo removido exitosamente con Remove.bg');
+    removedBgImage = await removeBackgroundWithImgly(file);
+    console.log('Fondo removido exitosamente en browser');
   } catch (err) {
     if (!config.devMode) {
       throw err;
     }
-    console.warn('No se pudo usar Remove.bg. Se usará BodyPix como fallback (solo dev).', err);
+    console.warn('No se pudo usar IMG.LY background removal. Se usará BodyPix como fallback (solo dev).', err);
     let segmentation = null;
     try {
       const net = await ensureBodyPixReady();
@@ -275,30 +277,45 @@ export async function cropFacesToPortraits(file, faces, backgroundColor = '#0f17
       console.warn('Error con BodyPix fallback:', err2);
     }
 
+    const editorSourceUrl = renderSegmentedSourceToDataUrl(image, segmentation);
+
     return faces.map((face) => {
+      const cropBox = getPortraitCropBox(face, image);
       const url = cropPortraitWithSegmentation(image, face, backgroundColor, segmentation);
       return {
         url,
         urlTransparent: url,
         sourceName: file.name,
+        editorCrop: cropBox,
+        editorSourceUrl,
       };
     });
   }
 
+  const editorSourceUrl = removedBgImage
+    ? renderImageToDataUrl(removedBgImage, {
+      transparent: true,
+      width: removedBgImage.width,
+    })
+    : null;
+
   const result = faces.map((face) => {
     const targetImage = removedBgImage || image;
     const adjustedFace = scaleFaceForImage(face, image, targetImage);
-    const urlWithBackground = cropPortrait(targetImage, adjustedFace, backgroundColor);
+    const cropBox = getPortraitCropBox(adjustedFace, targetImage);
+    const urlWithBackground = cropPortraitFromBox(targetImage, cropBox, backgroundColor);
     let urlTransparent;
     if (removedBgImage) {
-      urlTransparent = cropPortraitTransparent(removedBgImage, adjustedFace);
+      urlTransparent = cropPortraitTransparentFromBox(removedBgImage, cropBox);
     } else {
-      urlTransparent = cropPortraitTransparent(image, adjustedFace);
+      urlTransparent = cropPortraitTransparentFromBox(image, cropBox);
     }
     return {
       url: urlWithBackground,
       urlTransparent,
       sourceName: file.name,
+      editorCrop: cropBox,
+      editorSourceUrl,
     };
   });
   logFaceService('crop-finish', {
@@ -325,7 +342,7 @@ export async function removeBackgroundFromFile(file, backgroundColor = '#ffffff'
     backgroundColor,
     outputWidth: targetWidth,
   });
-  const removedBgImage = await removeBackgroundWithRemoveBg(file);
+  const removedBgImage = await removeBackgroundWithImgly(file);
   const urlTransparent = renderImageToDataUrl(removedBgImage, {
     transparent: true,
     width: targetWidth,
@@ -362,58 +379,31 @@ export async function resizeImageFile(file, outputWidth) {
 }
 
 /**
- * Remueve el fondo usando la API de Remove.bg
- * Usa el API key configurado dinámicamente
+ * Remueve el fondo directamente en el navegador usando IMG.LY.
  */
-async function removeBackgroundWithRemoveBg(file) {
-  const apiKey = config.apiKey;
-  
-  if (!apiKey) {
-    throw new Error('API key de Remove.bg no configurada. Ingresa tu API key en la sección de Configuración.');
+async function removeBackgroundWithImgly(file) {
+  const { removeBackground } = await loadBackgroundRemovalModule();
+  const blob = await removeBackground(file, getBackgroundRemovalConfig());
+  return blobToImageElement(blob);
+}
+
+async function loadBackgroundRemovalModule() {
+  if (!backgroundRemovalModulePromise) {
+    backgroundRemovalModulePromise = import('@imgly/background-removal');
   }
+  return backgroundRemovalModulePromise;
+}
 
-  const formData = new FormData();
-  formData.append('image_file', file);
-  formData.append('format', 'png');
-  formData.append('type', 'auto');
-  formData.append('size', 'auto');
-
-  const response = await fetch('https://api.remove.bg/v1.0/removebg', {
-    method: 'POST',
-    headers: {
-      'X-Api-Key': apiKey,
+function getBackgroundRemovalConfig() {
+  return {
+    debug: debugProcessing,
+    device: 'cpu',
+    model: 'isnet_fp16',
+    output: {
+      format: 'image/png',
+      quality: 0.95,
     },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.text();
-    console.error('Remove.bg API error details:', errorData);
-    if (response.status === 401) {
-      throw new Error('API key inválida o expirada. Verifica tu API Key de Remove.bg');
-    } else if (response.status === 402) {
-      const err = new Error('Créditos agotados en Remove.bg. Recarga tu cuenta.');
-      err.code = 'CREDITS_EXHAUSTED';
-      throw err;
-    } else {
-      throw new Error(`Remove.bg API error: ${response.statusText} (${response.status})`);
-    }
-  }
-
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Error al cargar imagen de Remove.bg'));
-    };
-    img.src = url;
-  });
+  };
 }
 
 /**
@@ -464,11 +454,35 @@ async function fileToImageElement(file) {
   });
 }
 
+async function blobToImageElement(blob) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('No se pudo cargar la imagen procesada sin fondo.'));
+    };
+
+    img.src = url;
+  });
+}
+
 
 /**
  * Recorta el retrato. Si se pasa color, rellena el fondo; si no, conserva la transparencia original.
  */
 function cropPortrait(image, face, backgroundColor) {
+  const cropBox = getPortraitCropBox(face, image);
+  return cropPortraitFromBox(image, cropBox, backgroundColor);
+}
+
+function getPortraitCropBox(face, image) {
   const EXPANSION_WIDTH = 1.5;
   const EXPANSION_HEIGHT = 1.8;
   const Y_OFFSET = -0.2;
@@ -494,8 +508,16 @@ function cropPortrait(image, face, backgroundColor) {
     image,
   }));
 
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    size: Math.round(squareSize),
+  };
+}
+
+function cropPortraitFromBox(image, cropBox, backgroundColor) {
   const canvas = document.createElement('canvas');
-  const outputSize = getOutputSize(squareSize);
+  const outputSize = getOutputSize(cropBox.size);
   canvas.width = outputSize;
   canvas.height = outputSize;
   const ctx = canvas.getContext('2d');
@@ -510,10 +532,10 @@ function cropPortrait(image, face, backgroundColor) {
   ctx.globalCompositeOperation = 'over';
   ctx.drawImage(
     image, 
-    Math.round(x), 
-    Math.round(y), 
-    Math.round(squareSize), 
-    Math.round(squareSize), 
+    cropBox.x, 
+    cropBox.y, 
+    cropBox.size, 
+    cropBox.size, 
     0, 0, 
     outputSize, 
     outputSize
@@ -527,33 +549,17 @@ function cropPortrait(image, face, backgroundColor) {
  */
 // Recorta el retrato PRESERVANDO TRANSPARENCIA usando segmentación BodyPix
 function cropPortraitTransparent(image, face, segmentation) {
+  const cropBox = getPortraitCropBox(face, image);
+  return cropPortraitTransparentFromBox(image, cropBox, segmentation);
+}
+
+function cropPortraitTransparentFromBox(image, cropBox, segmentation) {
   const EXPANSION_WIDTH = 1.5;
   const EXPANSION_HEIGHT = 1.8;
   const Y_OFFSET = -0.2;
 
-  const centerX = face.x + face.width / 2;
-  const faceTop = face.y;
-  const faceBottom = face.y + face.height;
-  const faceCenterY = faceTop + (faceBottom - faceTop) * (0.5 + Y_OFFSET);
-
-  let cropWidth = face.width * EXPANSION_WIDTH;
-  let cropHeight = face.height * EXPANSION_HEIGHT;
-
-  let squareSize = Math.min(cropWidth, cropHeight);
-
-  let x = centerX - squareSize / 2;
-  let y = faceCenterY - squareSize / 2;
-
-  ({ x, y, cropWidth: squareSize, cropHeight: squareSize } = clampToImageBounds({
-    x,
-    y,
-    width: squareSize,
-    height: squareSize,
-    image,
-  }));
-
   const canvas = document.createElement('canvas');
-  const outputSize = getOutputSize(squareSize);
+  const outputSize = getOutputSize(cropBox.size);
   canvas.width = outputSize;
   canvas.height = outputSize;
   const ctx = canvas.getContext('2d');
@@ -561,10 +567,10 @@ function cropPortraitTransparent(image, face, segmentation) {
   // Dibuja la imagen recortada
   ctx.drawImage(
     image,
-    Math.round(x),
-    Math.round(y),
-    Math.round(squareSize),
-    Math.round(squareSize),
+    cropBox.x,
+    cropBox.y,
+    cropBox.size,
+    cropBox.size,
     0, 0,
     outputSize,
     outputSize
@@ -657,6 +663,24 @@ function renderImageToDataUrl(image, { width, backgroundColor, transparent } = {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
   ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/png');
+}
+
+function renderSegmentedSourceToDataUrl(image, segmentation) {
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  if (segmentation) {
+    const maskCanvas = buildMaskCanvas(segmentation);
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.drawImage(maskCanvas, 0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
   return canvas.toDataURL('image/png');
 }
 

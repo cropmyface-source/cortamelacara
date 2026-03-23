@@ -1,4 +1,4 @@
-# GridFaces (Vue 3 + Vite)
+# Cortamelacara (Vue 3 + Vite)
 
 Webapp que:
 1) Recibe imágenes del usuario.  

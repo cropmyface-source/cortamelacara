@@ -1,5 +1,5 @@
 {
-  "name": "gridfaces",
+  "name": "cortamelacara",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
     "@tensorflow-models/body-pix": "1.0.0",
     "@tensorflow/tfjs": "1.7.4",
     "face-api.js": "^0.22.2",

@@ -105,37 +105,11 @@
             <span>Eliminar el fondo</span>
           </label>
 
-          <div v-if="removeBackground" class="settings__apikey">
-            <input
-              v-model="apiKey"
-              type="password"
-              placeholder="API KEY"
-            />
-            <div class="settings__apikey-status-slot">
-              <p
-                v-show="apiKeyStatus === 'valid'"
-                class="settings__apikey-status settings__apikey-status--valid"
-              >
-                API KEY VALIDA
-              </p>
-              <p
-                v-show="apiKeyStatus === 'invalid'"
-                class="settings__apikey-status settings__apikey-status--invalid"
-              >
-                API KEY INVALIDA
-              </p>
-              <p
-                v-show="apiKeyStatus === 'credits'"
-                class="settings__apikey-status settings__apikey-status--invalid"
-              >
-                CREDITOS AGOTADOS
-              </p>
-            </div>
-          </div>
-
-          <div v-if="removeBackground && !apiKey" class="settings-warning">
-            Para eliminar el fondo tenes que usar una API Key personal de remove_bg.
-            Obtenela gratis <a href="https://www.remove.bg/api" target="_blank" rel="noreferrer">aca</a>
+          <div v-if="removeBackground" class="settings-warning">
+            La eliminación de fondo se procesa en tu navegador. La primera vez puede tardar más porque se descarga el modelo.
+            <span v-if="removeBackgroundModelStatus === 'loading'"> Descargando modelo...</span>
+            <span v-else-if="removeBackgroundModelStatus === 'ready'"> Modelo listo.</span>
+            <span v-else-if="removeBackgroundModelStatus === 'error'"> No se pudo precargar el modelo; se intentará al procesar.</span>
           </div>
 
           <div class="settings-panel__divider"></div>
@@ -204,7 +178,7 @@
                 :disabled="isProcessing"
                 @click="downloadAll"
               >
-                DESCARGAR FOTOS
+                DESCARGAR TODAS
                 <img class="download-button__icon" :src="downloadIcon" alt="" />
               </button>
             </div>
@@ -245,14 +219,23 @@
                 <div class="thumb-card__meta">
                   <p class="thumb-card__name">{{ item.name }}</p>
                   <p class="thumb-card__size">{{ item.sizeLabel }}</p>
-                  <button
-                    v-if="isProcessed"
-                    class="thumb-card__download"
-                    type="button"
-                    @click="downloadPortrait(item, index, downloadTransparent)"
-                  >
-                    <img :src="downloadIcon" alt="" />
-                  </button>
+                  <div v-if="isProcessed" class="thumb-card__actions">
+                    <button
+                      v-if="item.canAdjustCrop"
+                      class="thumb-card__edit"
+                      type="button"
+                      @click="openCropEditor(item)"
+                    >
+                      Ajustar recorte
+                    </button>
+                    <button
+                      class="thumb-card__download"
+                      type="button"
+                      @click="downloadPortrait(item, index, downloadTransparent)"
+                    >
+                      <img :src="downloadIcon" alt="" />
+                    </button>
+                  </div>
                 </div>
               </article>
             </TransitionGroup>
@@ -364,7 +347,7 @@
           <h3>Faq</h3>
           <p>
             Soporta JPG, PNG y WEBP. Tus fotos se procesan localmente y no se guardan.
-            Para eliminar fondo necesitas una API key de remove.bg.
+            La eliminación de fondo corre en tu navegador y la primera vez descarga el modelo.
           </p>
         </div>
         <div class="site-footer__column">
@@ -375,18 +358,31 @@
           </p>
         </div>
       </div>
-      <div class="site-footer__bottom">
-        <p class="site-footer__credit">
-          Este es un proyecto de ONE TASK APP. Copyright {{ currentYear }}.
-        </p>
-        <button class="site-footer__contact" type="button" @click="showContact = true">
-          Contacto
-        </button>
+      <div class="site-footer__theme-box">
+        <div class="site-footer__theme-actions">
+          <button class="site-footer__contact" type="button" @click="showContact = true">
+            Contacto
+          </button>
+          <button type="button" @click="showPrivacy = true">Privacidad</button>
+          <button type="button" @click="showTerms = true">Términos</button>
+        </div>
+        <div class="site-footer__theme-main">
+          <p class="site-footer__source-text">
+            Esta app incluye software bajo AGPLv3 para la eliminación de fondo.
+          </p>
+          <a
+            class="site-footer__source-link"
+            :href="sourceCodeUrl"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Código fuente de esta versión
+          </a>
+        </div>
       </div>
-      <div class="site-footer__legal">
-        <button type="button" @click="showPrivacy = true">Privacidad</button>
-        <button type="button" @click="showTerms = true">Términos</button>
-      </div>
+      <p class="site-footer__credit">
+        Este es un proyecto de ONE TASK APP. Copyright {{ currentYear }}.
+      </p>
     </footer>
   </div>
 
@@ -424,9 +420,9 @@
           fotos en servidores propios.
         </p>
         <p>
-          Si el usuario activa la eliminación de fondo con remove.bg, la imagen se envía a ese
-          servicio de terceros para su procesamiento. El tratamiento se rige por la política de
-          privacidad de remove.bg.
+          Cuando activás la eliminación de fondo, el procesamiento sigue ocurriendo en tu navegador.
+          La primera vez se descargan modelos y archivos WASM provistos por IMG.LY para ejecutar esa
+          función localmente.
         </p>
         <p>
           Podemos utilizar cookies y tecnologías similares para mejorar la experiencia y, cuando
@@ -452,6 +448,15 @@
           El usuario declara contar con los derechos necesarios sobre las imágenes que sube y
           asume plena responsabilidad por su contenido.
         </p>
+        <p>
+          La función de eliminación de fondo utiliza <code>@imgly/background-removal</code> bajo
+          licencia AGPLv3. El código fuente correspondiente de la versión publicada debe quedar
+          disponible para usuarios que interactúan con esta app por red.
+        </p>
+        <p>
+          El código fuente de esta versión está disponible en
+          <a :href="sourceCodeUrl" target="_blank" rel="noreferrer">{{ sourceCodeUrl }}</a>.
+        </p>
       </div>
     </div>
   </div>
@@ -472,11 +477,18 @@
     </div>
   </div>
   -->
+
+  <PortraitEditor
+    ref="portraitEditorRef"
+    @apply="handleCropEditorApply"
+    @close="handleCropEditorClose"
+  />
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import PhotoUploader from './components/PhotoUploader.vue';
+import PortraitEditor from './components/PortraitEditor.vue';
 import explainerOne from './assets/image 1.png';
 import explainerTwo from './assets/image 2.png';
 import explainerThree from './assets/image 3.png';
@@ -489,8 +501,8 @@ import {
   detectFaces,
   cropFacesToPortraits,
   removeBackgroundFromFile,
+  preloadRemoveBackgroundAssets,
   resizeImageFile,
-  validateRemoveBgKey,
   setConfig,
 } from './services/FaceService';
 
@@ -500,7 +512,7 @@ const processedFiles = ref([]);
 const isProcessing = ref(false);
 const isProcessed = ref(false);
 const progress = ref(0);
-const apiKeyStatus = ref('idle');
+const removeBackgroundModelStatus = ref('idle');
 const invalidFilesCount = ref(0);
 
 const backgroundColor = ref('#fff35a');
@@ -515,8 +527,11 @@ const contrast = ref(100);
 const highlights = ref(100);
 const shadows = ref(100);
 const outputSize = ref(Number(import.meta.env.VITE_OUTPUT_SIZE || 700));
-const apiKey = ref(import.meta.env.VITE_REMOVEBG_API_KEY || '');
 const devMode = ref(import.meta.env.VITE_DEV_MODE === 'true');
+const sourceCodeUrl = (
+  import.meta.env.VITE_SOURCE_CODE_URL
+  || 'https://github.com/ploscri/cortamelacara/tree/main'
+).trim();
 const currentYear = new Date().getFullYear();
 const showContact = ref(false);
 const showPrivacy = ref(false);
@@ -525,6 +540,8 @@ const showTerms = ref(false);
 const contactName = ref('');
 const contactEmail = ref('');
 const contactMessage = ref('');
+const portraitEditorRef = ref(null);
+const editingItemId = ref(null);
 let processingRunId = 0;
 let uploadSessionId = 0;
 const debugProcessing = import.meta.env.DEV;
@@ -598,10 +615,14 @@ const displayItems = computed(() => {
     let urlTransparent = rawUrl;
     let hasTransparent = false;
     let crossfade = false;
+    let mode = primary?.mode || 'original';
+    let editorSourceUrl = rawUrl;
+    let editorCrop = primary?.editorCrop || null;
+    let transparentOutput = false;
 
     if (primary) {
-      const mode = primary.mode || 'original';
-      const supportsTransparency = mode === 'crop-remove-bg' || mode === 'remove-bg';
+      mode = primary.mode || 'original';
+      const supportsTransparency = supportsTransparentMode(mode);
       url = primary.url;
       urlTransparent = supportsTransparency
         ? (primary.urlTransparent || primary.url)
@@ -611,12 +632,17 @@ const displayItems = computed(() => {
         : primary.url;
       hasTransparent = supportsTransparency;
       crossfade = true;
+      editorSourceUrl = primary.editorSourceUrl || rawUrl;
+      transparentOutput = supportsTransparentMode(primary.mode);
     }
+
+    const canAdjustCrop = Boolean(editorSourceUrl);
 
     return {
       id: item.id || `${item.name}-${index}`,
+      processedItemId: primary?.id || null,
       name: item.name,
-      mode: primary?.mode || 'original',
+      mode,
       sizeLabel: item.sizeLabel,
       url,
       urlTransparent,
@@ -624,6 +650,10 @@ const displayItems = computed(() => {
       processedUrl,
       hasTransparent,
       crossfade,
+      canAdjustCrop,
+      editorSourceUrl,
+      editorCrop,
+      transparentOutput,
     };
   });
 
@@ -631,7 +661,7 @@ const displayItems = computed(() => {
   processedBySourceId.forEach((items) => {
     items.forEach((item, index) => {
       const mode = item.mode || 'unknown';
-      const supportsTransparency = mode === 'crop-remove-bg' || mode === 'remove-bg';
+      const supportsTransparency = supportsTransparentMode(mode);
       const url = item.url;
       const urlTransparent = supportsTransparency
         ? (item.urlTransparent || item.url)
@@ -640,8 +670,10 @@ const displayItems = computed(() => {
         ? (item.urlTransparent || item.url)
         : item.url;
       const hasTransparent = supportsTransparency;
+      const canAdjustCrop = Boolean(item.editorSourceUrl || item.urlTransparent || item.url);
       extraItems.push({
         id: item.id || `${item.sourceId || item.name || 'output'}-extra-${index}`,
+        processedItemId: item.id || null,
         name: item.name,
         mode: item.mode || 'unknown',
         sizeLabel: item.sizeLabel,
@@ -651,6 +683,10 @@ const displayItems = computed(() => {
         processedUrl,
         hasTransparent,
         crossfade: true,
+        canAdjustCrop,
+        editorSourceUrl: item.editorSourceUrl || item.urlTransparent || item.url || null,
+        editorCrop: item.editorCrop || null,
+        transparentOutput: supportsTransparentMode(item.mode),
       });
     });
   });
@@ -668,42 +704,20 @@ watch(displayItems, (items) => {
     rawUrlPrefix: item.rawUrl?.slice(0, 48),
     processedUrlPrefix: item.processedUrl?.slice(0, 48),
   })));
+  window.__CORTAMELACARA_DEBUG__ = {
+    displayItems: items,
+    processedFiles: processedFiles.value,
+    originalFiles: originalFiles.value,
+  };
 });
 
-watch([devMode, apiKey, outputSize], ([newMode, newKey, newOutputSize]) => {
+watch([devMode, outputSize], ([newMode, newOutputSize]) => {
   setConfig({
     devMode: newMode,
-    apiKey: newKey,
     outputSize: Number(newOutputSize || 1),
   });
-  if (newKey) {
-    localStorage.setItem('removebg_api_key', newKey);
-  } else {
-    localStorage.removeItem('removebg_api_key');
-  }
   localStorage.setItem('output_size', String(newOutputSize || 1));
 }, { immediate: true });
-
-let apiKeyTimer;
-watch([apiKey, removeBackground], ([newKey, enabled]) => {
-  apiKeyStatus.value = 'idle';
-  if (!enabled || !newKey) return;
-
-  clearTimeout(apiKeyTimer);
-  apiKeyStatus.value = 'checking';
-  apiKeyTimer = setTimeout(async () => {
-  const result = await validateRemoveBgKey(newKey);
-  if (result === null) {
-    apiKeyStatus.value = 'idle';
-    return;
-  }
-  if (result === 'credits') {
-    apiKeyStatus.value = 'credits';
-    return;
-  }
-  apiKeyStatus.value = result ? 'valid' : 'invalid';
-}, 500);
-});
 
 watch(
   [cropFace, removeBackground],
@@ -730,16 +744,28 @@ watch(removeBackground, (value) => {
     value,
     downloadTransparent: downloadTransparent.value,
   });
+  if (value && removeBackgroundModelStatus.value === 'idle') {
+    removeBackgroundModelStatus.value = 'loading';
+    preloadRemoveBackgroundAssets()
+      .then(() => {
+        removeBackgroundModelStatus.value = 'ready';
+      })
+      .catch((err) => {
+        console.warn('No se pudo precargar el modelo de eliminación de fondo:', err);
+        removeBackgroundModelStatus.value = 'error';
+      });
+  }
   if (!value) {
     downloadTransparent.value = false;
   }
 });
 
 onMounted(async () => {
-  const savedApiKey = localStorage.getItem('removebg_api_key');
-  if (savedApiKey && !apiKey.value) {
-    apiKey.value = savedApiKey;
-  }
+  window.__CORTAMELACARA_DEBUG__ = {
+    displayItems: displayItems.value,
+    processedFiles: processedFiles.value,
+    originalFiles: originalFiles.value,
+  };
   const savedOutputSize = localStorage.getItem('output_size');
   if (savedOutputSize) {
     outputSize.value = Number(savedOutputSize);
@@ -768,7 +794,7 @@ function clearOriginalPreviews() {
 
 function logProcessing(event, payload = {}) {
   if (!debugProcessing) return;
-  console.log(`[GridFaces] ${event}`, payload);
+  console.log(`[Cortamelacara] ${event}`, payload);
 }
 
 function cancelProcessingRun() {
@@ -844,14 +870,6 @@ async function handleProcess() {
 
 async function processImages() {
   if (!originalFiles.value.length) return;
-  if (removeBackground.value && !apiKey.value) {
-    errorMessage.value = 'Para eliminar el fondo necesitás ingresar la API key de remove_bg.';
-    return;
-  }
-  if (removeBackground.value && apiKeyStatus.value === 'invalid') {
-    errorMessage.value = 'La API key de remove_bg no es valida. Verifica el valor ingresado.';
-    return;
-  }
 
   const runId = ++processingRunId;
   const processConfig = {
@@ -864,7 +882,7 @@ async function processImages() {
     runId,
     files: originalFiles.value.map((item) => item.name),
     processConfig,
-    apiKeyStatus: apiKeyStatus.value,
+    removeBackgroundModelStatus: removeBackgroundModelStatus.value,
   });
 
   isProcessing.value = true;
@@ -901,20 +919,49 @@ async function processImages() {
           removeBackground: processConfig.removeBackground,
         });
         if (!faces.length) {
-          logProcessing('file-result-original', {
-            runId,
-            name,
-            reason: 'no_faces',
-          });
-          processedFiles.value.push({
-            id: `${sourceId}-original-${completed}`,
-            sourceId,
-            mode: 'original',
-            url,
-            urlTransparent: null,
-            name,
-            sizeLabel,
-          });
+          if (processConfig.removeBackground) {
+            const removed = await removeBackgroundFromFile(
+              file,
+              processConfig.backgroundColor,
+              processConfig.outputSize,
+            );
+            if (runId !== processingRunId) {
+              logProcessing('process-abort-after-remove-bg-no-faces', { runId, name, processingRunId });
+              return;
+            }
+            logProcessing('file-result-remove-bg-no-faces', {
+              runId,
+              name,
+              reason: 'no_faces',
+              outputSize: processConfig.outputSize,
+            });
+            processedFiles.value.push({
+              id: `${sourceId}-remove-bg-${completed}`,
+              sourceId,
+              mode: 'remove-bg',
+              url: removed.url,
+              urlTransparent: removed.urlTransparent,
+              name,
+              sizeLabel,
+              editorSourceUrl: removed.urlTransparent || removed.url,
+              editorCrop: null,
+            });
+          } else {
+            logProcessing('file-result-original', {
+              runId,
+              name,
+              reason: 'no_faces',
+            });
+            processedFiles.value.push({
+              id: `${sourceId}-original-${completed}`,
+              sourceId,
+              mode: 'original',
+              url,
+              urlTransparent: null,
+              name,
+              sizeLabel,
+            });
+          }
         } else {
           const crops = await cropFacesToPortraits(
             file,
@@ -943,6 +990,8 @@ async function processImages() {
                 : null,
               name,
               sizeLabel,
+              editorSourceUrl: crop.editorSourceUrl || url,
+              editorCrop: crop.editorCrop || null,
             })),
           );
         }
@@ -1024,12 +1073,9 @@ async function processImages() {
       code: err?.code,
     });
     console.error(err);
-    if (err && err.code === 'CREDITS_EXHAUSTED') {
-      apiKeyStatus.value = 'credits';
-      errorMessage.value = 'Créditos agotados en remove.bg. Recarga tu cuenta.';
-      return;
-    }
-    errorMessage.value = 'Ocurrió un error procesando las imágenes. Revisa la consola para más detalles.';
+    errorMessage.value = removeBackground.value
+      ? 'Ocurrió un error procesando las imágenes. Si es el primer uso, espera a que termine la descarga del modelo y reintenta.'
+      : 'Ocurrió un error procesando las imágenes. Revisa la consola para más detalles.';
   } finally {
     if (runId === processingRunId) {
       isProcessing.value = false;
@@ -1062,6 +1108,38 @@ async function downloadPortrait(portrait, index, transparent = false) {
   if (revoke) {
     URL.revokeObjectURL(downloadUrl);
   }
+}
+
+async function openCropEditor(item) {
+  if (!item?.editorSourceUrl || !portraitEditorRef.value) return;
+  editingItemId.value = item.processedItemId || item.id;
+  await nextTick();
+  await portraitEditorRef.value.openEditor({
+    imageUrl: item.editorSourceUrl,
+    initialCrop: item.editorCrop,
+    backgroundColor: backgroundColor.value,
+    outputWidth: outputSize.value,
+    transparentOutput: Boolean(item.transparentOutput),
+  });
+}
+
+function handleCropEditorApply(payload) {
+  if (!editingItemId.value) return;
+  processedFiles.value = processedFiles.value.map((item) => {
+    if (item.id !== editingItemId.value) return item;
+    return {
+      ...item,
+      url: payload.url,
+      urlTransparent: payload.urlTransparent || item.urlTransparent,
+      editorCrop: payload.cropBox || item.editorCrop,
+      editedManually: true,
+    };
+  });
+  editingItemId.value = null;
+}
+
+function handleCropEditorClose() {
+  editingItemId.value = null;
 }
 
 async function downloadAll() {
@@ -1107,6 +1185,10 @@ function formatSize(bytes) {
   const kb = bytes / 1024;
   if (kb < 1024) return `${kb.toFixed(1)} KB`;
   return `${(kb / 1024).toFixed(1)} MB`;
+}
+
+function supportsTransparentMode(mode) {
+  return mode === 'crop-remove-bg' || mode === 'remove-bg';
 }
 
 function hasActiveFilters() {
@@ -1199,9 +1281,6 @@ async function buildFilteredDownload(portrait, transparent) {
 }
 
 onBeforeUnmount(() => {
-  if (apiKeyTimer) {
-    clearTimeout(apiKeyTimer);
-  }
   clearOriginalPreviews();
 });
 
@@ -1749,6 +1828,29 @@ h1 {
   margin-top: 10px;
 }
 
+.thumb-card__actions {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.thumb-card__edit {
+  border: 1px solid #d0d0d0;
+  background: #ffffff;
+  color: #111111;
+  padding: 0 12px;
+  height: 40px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.thumb-card__actions .thumb-card__download {
+  margin-top: 0;
+}
+
 .thumb-card__download img {
   width: 16px;
   height: 26px;
@@ -2168,8 +2270,11 @@ h1 {
 .site-footer {
   border-top: 1px solid #ececec;
   margin-top: 64px;
+  width: calc(100% + 48px);
+  margin-left: -24px;
+  margin-right: -24px;
   padding: 32px 24px 40px;
-  background: #ffffff;
+  background: #fafafa;
 }
 
 .site-footer__inner {
@@ -2196,28 +2301,33 @@ h1 {
   font-family: 'Montserrat', Arial, sans-serif;
 }
 
-.site-footer__credit {
+.site-footer__theme-box {
   max-width: 1200px;
   margin: 28px auto 0;
-  font-size: 12px;
-  color: #9a9a9a;
-  letter-spacing: 0.08em;
-  font-family: 'Montserrat', Arial, sans-serif;
-}
-
-.site-footer__bottom {
-  max-width: 1200px;
-  margin: 28px auto 0;
+  padding: 18px 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  background: #f3f3f3;
-  padding: 20px;
+  gap: 24px;
+  background: #fafafa;
+  border: 1px solid #e6dfd3;
 }
 
-.site-footer__bottom .site-footer__credit {
-  margin: 0;
+.site-footer__theme-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 18px;
+}
+
+.site-footer__credit {
+  margin: 32px 0 0;
+  font-size: 12px;
+  color: #8f8f8f;
+  letter-spacing: 0.08em;
+  font-family: 'Montserrat', Arial, sans-serif;
+  text-align: center;
 }
 
 .site-footer__contact {
@@ -2234,23 +2344,41 @@ h1 {
   height: auto;
 }
 
-.site-footer__legal {
-  max-width: 1200px;
-  margin: 12px auto 0;
+.site-footer__theme-actions {
   display: flex;
-  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px 28px;
 }
 
-.site-footer__legal button {
+.site-footer__theme-actions button {
   border: none;
   background: transparent;
   color: #111111;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   cursor: pointer;
   padding: 0;
   font-family: 'Roboto', Arial, sans-serif;
   font-size: 12px;
+}
+
+.site-footer__source-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #4f4a3f;
+  font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.site-footer__source-link {
+  color: #111111;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-family: 'Roboto', Arial, sans-serif;
 }
 
 .contact-modal {
@@ -2295,6 +2423,11 @@ h1 {
 
 .contact-modal__body p {
   margin: 0;
+}
+
+.contact-modal__body a {
+  color: #111111;
+  word-break: break-word;
 }
 
 .contact-modal__close {
@@ -2460,20 +2593,44 @@ h1 {
   }
 
   .site-footer {
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
     padding-left: 0;
     padding-right: 0;
   }
 
-  .site-footer__bottom {
-    padding: 0 16px;
+  .site-footer__theme-box {
+    max-width: none;
+    margin-left: 16px;
+    margin-right: 16px;
+    padding: 18px 16px;
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .site-footer__legal {
-    padding: 0 16px;
-    flex-direction: column;
+  .site-footer__theme-actions {
+    width: 100%;
     align-items: flex-start;
+    gap: 12px;
+  }
+
+  .site-footer__theme-main {
+    width: 100%;
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+
+  .site-footer__theme-actions button {
+    font-size: 13px;
+  }
+
+  .site-footer__source-link {
+    display: inline-block;
+  }
+
+  .site-footer__credit {
+    padding: 0 16px;
   }
 
   .cookie-banner {
