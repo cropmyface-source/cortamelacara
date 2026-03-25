@@ -145,7 +145,12 @@
               class="action-button__progress"
               :style="{ width: `${progress}%` }"
             ></span>
-            <span class="action-button__label">{{ processLabel }}</span>
+            <span class="action-button__label">
+              {{ processLabel }}
+              <span v-if="isProcessing" class="action-button__dots" aria-hidden="true">
+                <span>.</span><span>.</span><span>.</span>
+              </span>
+            </span>
           </button>
 
 
@@ -160,8 +165,9 @@
           <div class="preview-panel__header">
             <p class="preview-panel__title">{{ batchLabel }}</p>
             <div class="preview-panel__controls">
-              <div class="preview-panel__size">
-                <span class="preview-panel__size-label">Tamaño de descarga</span>
+              <div v-if="isProcessed" class="preview-panel__size">
+                <span class="preview-panel__size-label preview-panel__size-label--desktop">Tamaño de descarga</span>
+                <span class="preview-panel__size-label preview-panel__size-label--mobile">Ancho de descarga</span>
                 <div class="preview-panel__size-row">
                   <input
                     v-model.number="outputSize"
@@ -169,7 +175,8 @@
                     min="1"
                     step="1"
                   />
-                  <span>px de ancho</span>
+                  <span class="preview-panel__size-unit preview-panel__size-unit--desktop">px de ancho</span>
+                  <span class="preview-panel__size-unit preview-panel__size-unit--mobile">px</span>
                 </div>
               </div>
               <button
@@ -530,7 +537,7 @@ const outputSize = ref(Number(import.meta.env.VITE_OUTPUT_SIZE || 700));
 const devMode = ref(import.meta.env.VITE_DEV_MODE === 'true');
 const sourceCodeUrl = (
   import.meta.env.VITE_SOURCE_CODE_URL
-  || 'https://github.com/ploscri/cortamelacara/tree/main'
+  || 'https://github.com/ploscri/cortamelacara'
 ).trim();
 const currentYear = new Date().getFullYear();
 const showContact = ref(false);
@@ -1562,7 +1569,7 @@ h1 {
   display: grid;
   grid-template-columns: 215px minmax(0, 1fr);
   gap: 80px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .workspace__sidebar {
@@ -1578,6 +1585,7 @@ h1 {
   overflow-y: auto;
   /*max-height: calc(100vh - 180px);*/  
   padding-right: 8px;
+  min-height: 100%;
 }
 
 .preview-panel {
@@ -1629,6 +1637,12 @@ h1 {
   font-size: 13px;
   letter-spacing: 0;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.preview-panel__size-label--mobile,
+.preview-panel__size-unit--mobile {
+  display: none;
 }
 
 .preview-panel__size-row {
@@ -1637,6 +1651,7 @@ h1 {
   gap: 8px;
   font-size: 13px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .preview-panel__size-row input {
@@ -2157,6 +2172,42 @@ h1 {
 .action-button__label {
   position: relative;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.action-button__dots {
+  display: inline-flex;
+  align-items: center;
+}
+
+.action-button__dots span {
+  opacity: 0;
+  animation: actionButtonDotPulse 1.2s infinite;
+}
+
+.action-button__dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.action-button__dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes actionButtonDotPulse {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .action-button:disabled {
@@ -2230,7 +2281,7 @@ h1 {
 }
 
 .download-button--top {
-  border-radius: 999px;
+  border-radius: 3px;
   padding: 0 26px;
   min-width: 210px;
   justify-self: end;
@@ -2574,7 +2625,18 @@ h1 {
   }
 
   .preview-panel__size {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  .preview-panel__size-label--desktop,
+  .preview-panel__size-unit--desktop {
+    display: none;
+  }
+
+  .preview-panel__size-label--mobile,
+  .preview-panel__size-unit--mobile {
+    display: inline;
   }
 
   .download-button--top {
@@ -2583,6 +2645,7 @@ h1 {
   }
 
   .filters-panel {
+    border-left: none;
     border-top: 1px dashed #bfbfbf;
     padding-left: 0;
     padding-top: 18px;
@@ -2593,17 +2656,17 @@ h1 {
   }
 
   .site-footer {
-    width: 100%;
-    margin-left: 0;
-    margin-right: 0;
-    padding-left: 0;
-    padding-right: 0;
+    width: calc(100% + 48px);
+    margin-left: -24px;
+    margin-right: -24px;
+    padding-left: 24px;
+    padding-right: 24px;
   }
 
   .site-footer__theme-box {
     max-width: none;
-    margin-left: 16px;
-    margin-right: 16px;
+    margin-left: 0;
+    margin-right: 0;
     padding: 18px 16px;
     flex-direction: column;
     align-items: flex-start;

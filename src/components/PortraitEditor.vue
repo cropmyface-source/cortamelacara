@@ -12,7 +12,10 @@
 
         <div class="editor-body">
           <div class="editor-stage">
-            <div class="editor-frame editor-frame--checker">
+            <div
+              class="editor-frame editor-frame--checker"
+              :class="{ 'editor-frame--circle': previewShape === 'circle' }"
+            >
               <canvas
                 ref="canvasRef"
                 class="editor-canvas"
@@ -35,14 +38,35 @@
                 @input="handleZoom"
               />
             </label>
+            <div class="editor-control">
+              <span>Vista previa</span>
+              <div class="editor-toggle-group" role="radiogroup" aria-label="Forma de vista previa">
+                <button
+                  class="editor-toggle"
+                  :class="{ 'editor-toggle--active': previewShape === 'square' }"
+                  type="button"
+                  @click="previewShape = 'square'"
+                >
+                  Cuadrada
+                </button>
+                <button
+                  class="editor-toggle"
+                  :class="{ 'editor-toggle--active': previewShape === 'circle' }"
+                  type="button"
+                  @click="previewShape = 'circle'"
+                >
+                  Circular
+                </button>
+              </div>
+            </div>
             <p class="editor-hint">
-              El encuadre final sale cuadrado y reemplaza el recorte automático solo para esta foto.
+              La vista circular sirve como guía para avatares. El encuadre exportado sigue saliendo cuadrado.
             </p>
           </div>
         </div>
 
         <div class="editor-footer">
-          <button class="btn btn-muted" type="button" @click="reset">Reset</button>
+          <button class="btn btn-muted" type="button" :disabled="!hasChanges" @click="reset">Reset</button>
           <button class="btn btn-muted" type="button" @click="close">Cancelar</button>
           <button class="btn btn-primary" type="button" @click="apply">Aplicar</button>
         </div>
@@ -52,7 +76,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const VIEWPORT_SIZE = 360;
 const MIN_CROP_SIZE = 80;
@@ -67,6 +91,11 @@ const cropBox = ref({ x: 0, y: 0, size: VIEWPORT_SIZE });
 const initialCropBox = ref({ x: 0, y: 0, size: VIEWPORT_SIZE });
 const baseCropSize = ref(VIEWPORT_SIZE);
 const zoom = ref(100);
+const previewShape = ref('square');
+const hasChanges = computed(() => (
+  zoom.value !== 100
+  || !isSameCropBox(cropBox.value, initialCropBox.value)
+));
 
 let dragPointerId = null;
 let dragStartX = 0;
@@ -98,6 +127,7 @@ async function openEditor(config) {
   cropBox.value = { ...nextCrop };
   baseCropSize.value = nextCrop.size;
   zoom.value = 100;
+  previewShape.value = 'square';
   isOpen.value = true;
 
   requestAnimationFrame(() => {
@@ -125,6 +155,10 @@ function clampCropBox(box, image) {
     y: Math.min(Math.max(0, box.y || 0), maxY),
     size,
   };
+}
+
+function isSameCropBox(a, b) {
+  return a.x === b.x && a.y === b.y && a.size === b.size;
 }
 
 function drawPreview() {
@@ -327,6 +361,7 @@ defineExpose({
   aspect-ratio: 1;
   border: 1px solid #d7d7d7;
   overflow: hidden;
+  transition: border-radius 0.18s ease, box-shadow 0.18s ease;
 }
 
 .editor-frame--checker {
@@ -338,6 +373,11 @@ defineExpose({
     linear-gradient(-45deg, transparent 75%, #ebebeb 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+
+.editor-frame--circle {
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(17, 17, 17, 0.08);
 }
 
 .editor-canvas {
@@ -369,6 +409,33 @@ defineExpose({
 .editor-control input {
   width: 100%;
   accent-color: #d46060;
+}
+
+.editor-toggle-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.editor-toggle {
+  border: 1px solid #d0d0d0;
+  background: #ffffff;
+  color: #111111;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.editor-toggle--active {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
 }
 
 .editor-hint {
