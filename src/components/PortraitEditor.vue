@@ -13,8 +13,11 @@
         <div class="editor-body">
           <div class="editor-stage">
             <div
-              class="editor-frame editor-frame--checker"
-              :class="{ 'editor-frame--circle': previewShape === 'circle' }"
+              class="editor-frame"
+              :class="{
+                'editor-frame--checker': showTransparentPreview,
+                'editor-frame--circle': previewShape === 'circle',
+              }"
             >
               <canvas
                 ref="canvasRef"
@@ -92,6 +95,7 @@ const initialCropBox = ref({ x: 0, y: 0, size: VIEWPORT_SIZE });
 const baseCropSize = ref(VIEWPORT_SIZE);
 const zoom = ref(100);
 const previewShape = ref('square');
+const showTransparentPreview = computed(() => Boolean(sourceConfig.value?.showTransparentPreview));
 const hasChanges = computed(() => (
   zoom.value !== 100
   || !isSameCropBox(cropBox.value, initialCropBox.value)
@@ -168,6 +172,13 @@ function drawPreview() {
   if (!ctx) return;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (sourceConfig.value?.transparentOutput && !showTransparentPreview.value) {
+    ctx.fillStyle = sourceConfig.value.backgroundColor || '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  ctx.filter = sourceConfig.value?.previewFilter || 'none';
+  ctx.globalCompositeOperation = sourceConfig.value?.previewBlendMode || 'source-over';
   ctx.drawImage(
     sourceImage.value,
     cropBox.value.x,
@@ -179,6 +190,8 @@ function drawPreview() {
     canvas.width,
     canvas.height,
   );
+  ctx.filter = 'none';
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 function handleZoom() {

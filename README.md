@@ -25,8 +25,17 @@ Crea un archivo `.env.local` en la raíz si necesitás personalizar la app:
 ```env
 VITE_OUTPUT_SIZE=700
 VITE_DEV_MODE=false
-VITE_SOURCE_CODE_URL=https://github.com/ploscri/cortamelacara/tree/main
+VITE_SOURCE_CODE_URL=https://github.com/cropmyface-source/cortamelacara/tree/main
+VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 ```
+
+Si configurás `VITE_GA_MEASUREMENT_ID`, la app carga Google Analytics 4 y envía eventos básicos de uso:
+- selección de imágenes
+- inicio, éxito y error de procesamiento
+- descargas individuales y por lote
+- apertura y aplicación del editor de recorte
+- aperturas de contacto, privacidad y términos
+- envío del formulario de contacto
 
 ## Modelos locales
 Para detección de rostros y fallback local con BodyPix, asegurate de tener estos archivos en `public/models`:

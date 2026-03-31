@@ -1,0 +1,21 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#F6F1E8"/>
+  <rect x="48" y="48" width="1104" height="534" rx="28" fill="#FFFDF9" stroke="#E4DDD1" stroke-width="2"/>
+  <circle cx="902" cy="184" r="96" fill="#FFF35A"/>
+  <circle cx="996" cy="428" r="54" fill="#D46060" fill-opacity="0.16"/>
+  <rect x="96" y="110" width="164" height="164" rx="28" fill="#FFF35A" stroke="#1B1B1B" stroke-width="12"/>
+  <path d="M124 204C152 158 206 142 248 154V258H124V204Z" fill="#1B1B1B" fill-opacity="0.08"/>
+  <text x="96" y="352" fill="#111111" font-family="Montserrat, Arial, sans-serif" font-size="68" font-weight="800">
+    cortamelacara
+  </text>
+  <text x="96" y="420" fill="#111111" font-family="Montserrat, Arial, sans-serif" font-size="34" font-weight="600">
+    Recortá caras y quitá el fondo online
+  </text>
+  <text x="96" y="474" fill="#5E5E5E" font-family="Montserrat, Arial, sans-serif" font-size="25" font-weight="400">
+    Fotos para perfiles, avatares, CV y redes sociales
+  </text>
+  <rect x="96" y="512" width="344" height="52" rx="26" fill="#111111"/>
+  <text x="268" y="545" text-anchor="middle" fill="#FFFFFF" font-family="Roboto, Arial, sans-serif" font-size="21" font-weight="700">
+    cortamelacara.com
+  </text>
+</svg>

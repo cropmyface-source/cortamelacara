@@ -33,7 +33,7 @@
             </a>
           </div>
           <h1 v-if="!originalFiles.length" class="hero__lede hero__lede--lead">
-            Recorte de rostro y eliminación de fondo online.
+            Recorte de rostro y eliminación de fondo online gratis.
             <span class="hero__lede__rest">
               Subí varias fotos juntas, nosotros recortamos la cara, quitamos el fondo y descargás
               cada imagen lista para usar.
@@ -81,6 +81,162 @@
       </div>
       <p class="upload-section__formats">Formatos soportados: jpg, png, webp</p>
       <p class="upload-note">NO GUARDAMOS TUS FOTOS</p>
+    </section>
+
+    <section v-if="!originalFiles.length" class="seo-content" aria-labelledby="seo-content-title">
+      <div class="seo-content__inner">
+        <div class="seo-content__divider" aria-hidden="true"></div>
+        <div class="seo-content__intro">
+          <p class="seo-content__eyebrow">Herramienta online</p>
+          <h2 id="seo-content-title">Recortá caras gratis para perfiles, avatares, CV y redes sociales</h2>
+          <p>
+            Cortamelacara es una herramienta gratis que detecta rostros, permite ajustar el
+            encuadre y genera retratos listos para usar. El procesamiento ocurre en tu navegador,
+            sin subir tus fotos a un servidor propio de la app.
+          </p>
+        </div>
+
+        <div class="seo-content__grid">
+          <article class="seo-card">
+            <div class="seo-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3Z"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                />
+                <path
+                  d="M8 9.5h8M8 12h8M8 14.5h5"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </div>
+            <h3>Cómo funciona</h3>
+            <p>
+              Subís una o varias imágenes, la app detecta las caras, arma el recorte y te deja
+              descargar gratis cada resultado por separado o en lote.
+            </p>
+          </article>
+
+          <article class="seo-card">
+            <div class="seo-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M12 4.8a6.2 6.2 0 0 0-3.95 10.98c.84.7 1.45 1.6 1.73 2.52h4.44c.28-.92.89-1.82 1.73-2.52A6.2 6.2 0 0 0 12 4.8Z"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M9.9 19.2h4.2M10.4 21h3.2M10.4 12.1h3.2"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </div>
+            <h3>Casos de uso</h3>
+            <p>
+              Sirve para fotos de perfil, avatares para redes sociales, equipos internos,
+              credenciales, currículums, ecommerce y catálogos.
+            </p>
+          </article>
+
+          <article class="seo-card">
+            <div class="seo-card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path
+                  d="M6 8.5h12M6 12h12M6 15.5h12"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
+                <circle cx="9" cy="8.5" r="1.7" fill="currentColor" />
+                <circle cx="15" cy="12" r="1.7" fill="currentColor" />
+                <circle cx="11" cy="15.5" r="1.7" fill="currentColor" />
+              </svg>
+            </div>
+            <h3>Qué podés ajustar</h3>
+            <p>
+              Podés quitar el fondo, usar transparencia, elegir color de fondo, modificar el
+              encuadre, aplicar filtros y definir el ancho de descarga.
+            </p>
+          </article>
+        </div>
+
+        <div class="seo-faq" aria-labelledby="seo-faq-title">
+          <h2 id="seo-faq-title">Preguntas frecuentes</h2>
+          <div class="seo-faq__grid">
+            <article class="seo-card">
+              <div class="seo-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 17.2a5.2 5.2 0 1 0 0-10.4 5.2 5.2 0 0 0 0 10.4Z"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  />
+                  <path
+                    d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.8 5.8l1.6 1.6M16.6 16.6l1.6 1.6M18.2 5.8l-1.6 1.6M7.4 16.6l-1.6 1.6"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </div>
+              <h3>¿Se guardan mis fotos?</h3>
+              <p>No. Las imágenes se procesan localmente en el navegador durante el uso de la app.</p>
+            </article>
+            <article class="seo-card">
+              <div class="seo-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M12 6v8"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  />
+                  <path
+                    d="m8.8 10.8 3.2 3.2 3.2-3.2"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M6 18h12"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  />
+                </svg>
+              </div>
+              <h3>¿Puedo descargar varias imágenes juntas?</h3>
+              <p>Sí. Una vez procesadas, podés bajar cada retrato o descargar todo el lote.</p>
+            </article>
+            <article class="seo-card">
+              <div class="seo-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="7.2" stroke="currentColor" stroke-width="1.8" />
+                  <path
+                    d="M12 7.7a4.3 4.3 0 0 0-4.3 4.3"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  />
+                  <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+                </svg>
+              </div>
+              <h3>¿Sirve para fotos circulares de avatar?</h3>
+              <p>
+                Sí. El editor de recorte incluye una vista previa circular para orientar fotos de
+                perfil en redes y plataformas.
+              </p>
+            </article>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section v-if="originalFiles.length" class="workspace">
@@ -267,7 +423,7 @@
 
               <label class="filters-panel__option">
                 <input v-model="filterMultiply" type="checkbox" />
-                <span>Fundido con el fondo</span>
+                <span>Unir cara con fondo</span>
               </label>
 
               <div class="filters-panel__divider"></div>
@@ -339,8 +495,8 @@
         <div class="site-footer__column">
           <h3>Acerca</h3>
           <p>
-            FaceCut es una herramienta online para recortar rostros y eliminar fondos en segundos.
-            Procesa lotes de fotos sin instalar nada.
+            Cortamelacara es una herramienta online gratis para recortar rostros y eliminar fondos
+            en segundos. Procesa lotes de fotos sin instalar nada.
           </p>
         </div>
         <div class="site-footer__column">
@@ -350,28 +506,14 @@
             Buscamos resultados claros con el menor esfuerzo.
           </p>
         </div>
-        <div class="site-footer__column">
-          <h3>Faq</h3>
-          <p>
-            Soporta JPG, PNG y WEBP. Tus fotos se procesan localmente y no se guardan.
-            La eliminación de fondo corre en tu navegador y la primera vez descarga el modelo.
-          </p>
-        </div>
-        <div class="site-footer__column">
-          <h3>Casos de uso</h3>
-          <p>
-            Fotos para CV, perfiles de redes, ecommerce, credenciales, equipos de trabajo
-            y catálogos internos.
-          </p>
-        </div>
       </div>
       <div class="site-footer__theme-box">
         <div class="site-footer__theme-actions">
-          <button class="site-footer__contact" type="button" @click="showContact = true">
+          <button class="site-footer__contact" type="button" @click="openContactModal">
             Contacto
           </button>
-          <button type="button" @click="showPrivacy = true">Privacidad</button>
-          <button type="button" @click="showTerms = true">Términos</button>
+          <button type="button" @click="openPrivacyModal">Privacidad</button>
+          <button type="button" @click="openTermsModal">Términos</button>
         </div>
         <div class="site-footer__theme-main">
           <p class="site-footer__source-text">
@@ -387,9 +529,11 @@
           </a>
         </div>
       </div>
+      <!--
       <p class="site-footer__credit">
         Este es un proyecto de ONE TASK APP. Copyright {{ currentYear }}.
       </p>
+      -->
     </footer>
   </div>
 
@@ -423,7 +567,7 @@
       <h3>Política de Privacidad</h3>
       <div class="contact-modal__body">
         <p>
-          FaceCut procesa las imágenes en el navegador del usuario. No almacenamos ni compartimos
+          Cortamelacara procesa las imágenes en el navegador del usuario. No almacenamos ni compartimos
           fotos en servidores propios.
         </p>
         <p>
@@ -537,8 +681,9 @@ const outputSize = ref(Number(import.meta.env.VITE_OUTPUT_SIZE || 700));
 const devMode = ref(import.meta.env.VITE_DEV_MODE === 'true');
 const sourceCodeUrl = (
   import.meta.env.VITE_SOURCE_CODE_URL
-  || 'https://github.com/ploscri/cortamelacara'
+  || 'https://github.com/cropmyface-source/cortamelacara'
 ).trim();
+const gaMeasurementId = (import.meta.env.VITE_GA_MEASUREMENT_ID || '').trim();
 const currentYear = new Date().getFullYear();
 const showContact = ref(false);
 const showPrivacy = ref(false);
@@ -551,7 +696,10 @@ const portraitEditorRef = ref(null);
 const editingItemId = ref(null);
 let processingRunId = 0;
 let uploadSessionId = 0;
+let processStartedAt = 0;
 const debugProcessing = import.meta.env.DEV;
+const seoTitle = 'Cortamelacara | Recortar caras y quitar fondo online gratis';
+const seoDescription = 'Recortá caras y eliminá el fondo de tus fotos online gratis. Subí varias imágenes, procesalas en tu navegador y descargá retratos listos para CV, perfiles y avatares.';
 
 const processLabel = computed(() => {
   if (isProcessing.value) return 'PROCESANDO';
@@ -768,6 +916,8 @@ watch(removeBackground, (value) => {
 });
 
 onMounted(async () => {
+  applySeoMetadata();
+  initAnalytics();
   window.__CORTAMELACARA_DEBUG__ = {
     displayItems: displayItems.value,
     processedFiles: processedFiles.value,
@@ -790,6 +940,111 @@ onMounted(async () => {
   //   showCookieBanner.value = true;
   // }
 });
+
+function initAnalytics() {
+  if (typeof window === 'undefined' || typeof document === 'undefined' || !gaMeasurementId) return;
+  if (window.gtag && window.__cortamelacaraGaInitialized) return;
+
+  window.dataLayer = window.dataLayer || [];
+  function gtag() {
+    window.dataLayer.push(arguments);
+  }
+  window.gtag = window.gtag || gtag;
+
+  if (!document.querySelector(`script[src*="${gaMeasurementId}"]`)) {
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaMeasurementId)}`;
+    document.head.appendChild(script);
+  }
+
+  window.gtag('js', new Date());
+  window.gtag('config', gaMeasurementId, {
+    page_title: seoTitle,
+    page_path: window.location.pathname,
+    page_location: window.location.href,
+  });
+  window.__cortamelacaraGaInitialized = true;
+}
+
+function trackEvent(name, params = {}) {
+  if (typeof window === 'undefined' || !gaMeasurementId || typeof window.gtag !== 'function') return;
+  window.gtag('event', name, params);
+}
+
+function applySeoMetadata() {
+  if (typeof document === 'undefined') return;
+
+  document.title = seoTitle;
+
+  const canonicalUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}`
+    : '';
+  const socialImageUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/social-preview.svg`
+    : '';
+
+  upsertMetaTag('name', 'description', seoDescription);
+  upsertMetaTag('property', 'og:title', seoTitle);
+  upsertMetaTag('property', 'og:description', seoDescription);
+  upsertMetaTag('property', 'og:url', canonicalUrl);
+  upsertMetaTag('property', 'og:image', socialImageUrl);
+  upsertMetaTag('name', 'twitter:title', seoTitle);
+  upsertMetaTag('name', 'twitter:description', seoDescription);
+  upsertMetaTag('name', 'twitter:image', socialImageUrl);
+
+  let canonicalLink = document.querySelector('link[rel="canonical"]');
+  if (!canonicalLink) {
+    canonicalLink = document.createElement('link');
+    canonicalLink.setAttribute('rel', 'canonical');
+    document.head.appendChild(canonicalLink);
+  }
+  canonicalLink.setAttribute('href', canonicalUrl);
+
+  const schema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'Cortamelacara',
+    applicationCategory: 'MultimediaApplication',
+    operatingSystem: 'Web',
+    inLanguage: 'es',
+    url: canonicalUrl,
+    description: seoDescription,
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+      availability: 'https://schema.org/InStock',
+    },
+    featureList: [
+      'Deteccion de rostros',
+      'Recorte de cara',
+      'Eliminacion de fondo',
+      'Descarga individual y en lote',
+      'Vista previa para avatares',
+    ],
+  };
+
+  let schemaTag = document.querySelector('script[data-seo-schema="cortamelacara"]');
+  if (!schemaTag) {
+    schemaTag = document.createElement('script');
+    schemaTag.setAttribute('type', 'application/ld+json');
+    schemaTag.setAttribute('data-seo-schema', 'cortamelacara');
+    document.head.appendChild(schemaTag);
+  }
+  schemaTag.textContent = JSON.stringify(schema);
+}
+
+function upsertMetaTag(attribute, key, content) {
+  if (!content) return;
+  let meta = document.querySelector(`meta[${attribute}="${key}"]`);
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute(attribute, key);
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute('content', content);
+}
 
 function clearOriginalPreviews() {
   originalFiles.value.forEach((file) => {
@@ -858,6 +1113,12 @@ function handleFiles(files) {
       url: previewUrl,
     };
   });
+
+  trackEvent('upload_selected', {
+    files_total: incomingFiles.length,
+    files_valid: validImages.length,
+    files_invalid: invalidFilesCount.value,
+  });
 }
 
 function isValidImage(file) {
@@ -872,6 +1133,13 @@ function isValidImage(file) {
 
 async function handleProcess() {
   if (isProcessing.value) return;
+  trackEvent('process_started', {
+    files_count: originalFiles.value.length,
+    crop_face: cropFace.value,
+    remove_background: removeBackground.value,
+    transparent_download: downloadTransparent.value,
+    output_size: Number(outputSize.value) || 0,
+  });
   await processImages();
 }
 
@@ -893,6 +1161,7 @@ async function processImages() {
   });
 
   isProcessing.value = true;
+  processStartedAt = Date.now();
   progress.value = 0;
   errorMessage.value = '';
   processedFiles.value = [];
@@ -1065,6 +1334,14 @@ async function processImages() {
     }
     isProcessed.value = true;
     invalidFilesCount.value = 0;
+    trackEvent('process_completed', {
+      files_input: total,
+      files_output: processedFiles.value.length,
+      crop_face: processConfig.cropFace,
+      remove_background: processConfig.removeBackground,
+      output_size: Number(processConfig.outputSize) || 0,
+      duration_ms: processStartedAt ? Date.now() - processStartedAt : undefined,
+    });
     logProcessing('process-finish', {
       runId,
       processedCount: processedFiles.value.length,
@@ -1083,9 +1360,17 @@ async function processImages() {
     errorMessage.value = removeBackground.value
       ? 'Ocurrió un error procesando las imágenes. Si es el primer uso, espera a que termine la descarga del modelo y reintenta.'
       : 'Ocurrió un error procesando las imágenes. Revisa la consola para más detalles.';
+    trackEvent('process_failed', {
+      files_input: total,
+      crop_face: processConfig.cropFace,
+      remove_background: processConfig.removeBackground,
+      error_code: err?.code || 'unknown',
+      duration_ms: processStartedAt ? Date.now() - processStartedAt : undefined,
+    });
   } finally {
     if (runId === processingRunId) {
       isProcessing.value = false;
+      processStartedAt = 0;
       logProcessing('process-finally', {
         runId,
         isProcessed: isProcessed.value,
@@ -1112,6 +1397,12 @@ async function downloadPortrait(portrait, index, transparent = false) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  trackEvent('download_single', {
+    index,
+    transparent,
+    mode: portrait.mode || 'unknown',
+    has_filters: hasActiveFilters(),
+  });
   if (revoke) {
     URL.revokeObjectURL(downloadUrl);
   }
@@ -1119,6 +1410,10 @@ async function downloadPortrait(portrait, index, transparent = false) {
 
 async function openCropEditor(item) {
   if (!item?.editorSourceUrl || !portraitEditorRef.value) return;
+  trackEvent('crop_editor_opened', {
+    mode: item.mode || 'unknown',
+    transparent_output: Boolean(item.transparentOutput),
+  });
   editingItemId.value = item.processedItemId || item.id;
   await nextTick();
   await portraitEditorRef.value.openEditor({
@@ -1127,11 +1422,17 @@ async function openCropEditor(item) {
     backgroundColor: backgroundColor.value,
     outputWidth: outputSize.value,
     transparentOutput: Boolean(item.transparentOutput),
+    showTransparentPreview: Boolean(downloadTransparent.value),
+    previewFilter: buildCanvasFilter(),
+    previewBlendMode: activeMultiply.value && !downloadTransparent.value ? 'multiply' : 'source-over',
   });
 }
 
 function handleCropEditorApply(payload) {
   if (!editingItemId.value) return;
+  trackEvent('crop_editor_applied', {
+    has_crop_box: Boolean(payload.cropBox),
+  });
   processedFiles.value = processedFiles.value.map((item) => {
     if (item.id !== editingItemId.value) return item;
     return {
@@ -1151,6 +1452,11 @@ function handleCropEditorClose() {
 
 async function downloadAll() {
   const transparent = Boolean(downloadTransparent.value);
+  trackEvent('download_all', {
+    items_count: processedFiles.value.length,
+    transparent,
+    has_filters: hasActiveFilters(),
+  });
   for (let index = 0; index < processedFiles.value.length; index++) {
     await new Promise((resolve) => {
       setTimeout(() => {
@@ -1295,7 +1601,7 @@ function sendContact() {
   const name = contactName.value.trim();
   const email = contactEmail.value.trim();
   const message = contactMessage.value.trim();
-  const subject = 'Contacto FaceCut';
+  const subject = 'Contacto Cortamelacara';
   const bodyLines = [
     `Nombre: ${name || '-'}`,
     `Email: ${email || '-'}`,
@@ -1304,8 +1610,28 @@ function sendContact() {
   ];
   const body = bodyLines.join('\n');
   const mailto = `mailto:ploscri@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  trackEvent('contact_submitted', {
+    has_name: Boolean(name),
+    has_email: Boolean(email),
+    has_message: Boolean(message),
+  });
   window.location.href = mailto;
   showContact.value = false;
+}
+
+function openContactModal() {
+  showContact.value = true;
+  trackEvent('contact_opened');
+}
+
+function openPrivacyModal() {
+  showPrivacy.value = true;
+  trackEvent('privacy_opened');
+}
+
+function openTermsModal() {
+  showTerms.value = true;
+  trackEvent('terms_opened');
 }
 
 // function setCookieConsent(value) {
@@ -1561,6 +1887,132 @@ h1 {
   font-size: 12px;
   margin: 0;
   letter-spacing: 0.08em;
+}
+
+.seo-content {
+  width: 100%;
+  margin: 120px auto 108px;
+}
+
+.seo-content__inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 42px;
+}
+
+.seo-content__divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(226, 108, 108, 0.45);
+}
+
+.seo-content__intro {
+  max-width: 980px;
+  margin: 50px auto 0px auto ;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 22px;
+}
+
+.seo-content__eyebrow {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #737373;
+  font-weight: 500;
+  font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.seo-content__intro h2,
+.seo-faq h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 2vw, 2.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+  text-wrap: balance;
+  font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.seo-content__intro h2 {
+  max-width: 1040px;
+  color: #db6663;
+}
+
+.seo-faq h2 {
+  text-align: center;
+  color: #db6663;
+}
+
+.seo-content__intro p,
+.seo-card p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.5;
+  color: #686868;
+  font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.seo-content__intro p {
+  max-width: 1080px;
+  text-wrap: pretty;
+}
+
+.seo-content__grid,
+.seo-faq__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px;
+}
+
+.seo-card {
+  min-height: 200px;
+  border: 1px solid #ececec;
+  background: #fff;
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 14px;
+  box-shadow: 0 8px 24px rgba(27, 27, 27, 0.03);
+}
+
+.seo-card__icon {
+  width: 72px;
+  height: 72px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #d46060;
+  border-radius: 18px;
+  color: #ffffff;
+}
+
+.seo-card__icon svg {
+  width: 36px;
+  height: 36px;
+  display: block;
+}
+
+.seo-card h3 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.15;
+  font-weight: 800;
+  color: #171717;
+  font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.seo-faq {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-top: 64px;
 }
 
 .workspace {
@@ -2319,13 +2771,13 @@ h1 {
 }
 
 .site-footer {
-  border-top: 1px solid #ececec;
-  margin-top: 64px;
+  border-top: 0;
+  margin-top: 88px;
   width: calc(100% + 48px);
   margin-left: -24px;
   margin-right: -24px;
-  padding: 32px 24px 40px;
-  background: #fafafa;
+  padding: 52px 24px 34px;
+  background: #373634;
 }
 
 .site-footer__inner {
@@ -2333,35 +2785,36 @@ h1 {
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 24px;
+  gap: 36px 42px;
 }
 
 .site-footer__column h3 {
-  margin: 0 0 8px;
-  font-size: 14px;
+  margin: 0 0 10px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.06em;
+  color: #eb7570;
   font-family: 'Montserrat', Arial, sans-serif;
 }
 
 .site-footer__column p {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #666666;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #d8d5d1;
   font-family: 'Montserrat', Arial, sans-serif;
 }
 
 .site-footer__theme-box {
   max-width: 1200px;
-  margin: 28px auto 0;
-  padding: 18px 22px;
+  margin: 42px auto 0;
+  padding: 20px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  background: #fafafa;
-  border: 1px solid #e6dfd3;
+  background: transparent;
+  border: 1px solid rgba(233, 228, 219, 0.5);
 }
 
 .site-footer__theme-main {
@@ -2373,9 +2826,9 @@ h1 {
 }
 
 .site-footer__credit {
-  margin: 32px 0 0;
-  font-size: 12px;
-  color: #8f8f8f;
+  margin: 42px 0 0;
+  font-size: 11px;
+  color: #9e9992;
   letter-spacing: 0.08em;
   font-family: 'Montserrat', Arial, sans-serif;
   text-align: center;
@@ -2384,14 +2837,14 @@ h1 {
 .site-footer__contact {
   border: none;
   background: transparent;
-  color: #d46060;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  color: #cfcac4;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   cursor: pointer;
   padding: 0;
   border-radius: 0;
   font-family: 'Roboto', Arial, sans-serif;
-  font-size: 12px;
+  font-size: 14px;
   height: auto;
 }
 
@@ -2405,30 +2858,30 @@ h1 {
 .site-footer__theme-actions button {
   border: none;
   background: transparent;
-  color: #111111;
+  color: #cfcac4;
   font-weight: 700;
   letter-spacing: 0.03em;
   cursor: pointer;
   padding: 0;
   font-family: 'Roboto', Arial, sans-serif;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .site-footer__source-text {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
-  color: #4f4a3f;
+  color: #bcb6ae;
   font-family: 'Montserrat', Arial, sans-serif;
 }
 
 .site-footer__source-link {
-  color: #111111;
-  font-size: 12px;
+  color: #ddd9d3;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
   font-family: 'Roboto', Arial, sans-serif;
 }
 
@@ -2590,6 +3043,11 @@ h1 {
     justify-content: flex-start;
   }
 
+  .seo-content__grid,
+  .seo-faq__grid {
+    grid-template-columns: 1fr;
+  }
+
   .workspace {
     display: flex;
     flex-direction: column;
@@ -2714,6 +3172,44 @@ h1 {
 }
 
 @media (max-width: 640px) {
+  .seo-content {
+    margin-top: 84px;
+    margin-bottom: 64px;
+  }
+
+  .seo-content__intro h2,
+  .seo-faq h2 {
+    line-height: 1.02;
+  }
+
+  .seo-content__inner {
+    gap: 28px;
+  }
+
+  .seo-content__intro {
+    gap: 16px;
+  }
+
+  .seo-content__eyebrow {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+  }
+
+  .seo-content__intro p,
+  .seo-card p {
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .seo-card {
+    min-height: auto;
+    padding: 22px 20px;
+  }
+
+  .seo-card h3 {
+    font-size: 18px;
+  }
+
   .adsense-placeholder {
     align-items: center;
   }
