@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <!--
+    <!-- 
     <div class="adsense-wrapper">
       <div class="adsense-placeholder">
         <span class="adsense-placeholder__label">PUBLICIDAD</span>
