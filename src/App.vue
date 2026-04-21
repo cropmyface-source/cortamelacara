@@ -26,12 +26,19 @@
       :class="{ 'brand-header--explainer': !originalFiles.length }"
     >
       <div class="brand-header__inner">
-        <div class="brand-copy">
+        <div class="brand-header__top">
           <div class="brand brand--image">
             <a class="brand__link" href="/" @click.prevent="resetAll">
               <img class="brand__logo-home" :src="logoHome" alt="cortame la cara" />
             </a>
           </div>
+          <nav v-if="!originalFiles.length" class="brand-nav" aria-label="Secciones del sitio">
+            <a href="/acerca/">Acerca</a>
+            <a href="/quienes-somos/">Quienes somos</a>
+          </nav>
+        </div>
+        <div class="brand-header__hero">
+          <div class="brand-copy">
           <h1 v-if="!originalFiles.length" class="hero__lede hero__lede--lead">
             Recorte de rostro y eliminación de fondo online gratis.
             <span class="hero__lede__rest">
@@ -39,17 +46,18 @@
               cada imagen lista para usar.
             </span>
           </h1>
-        </div>
-        <div v-if="!originalFiles.length" class="hero__steps">
-          <template v-for="(item, index) in explainerImages" :key="item.title">
-            <div class="step" :class="{ 'step--small': index > 0 }">
-              <p class="step__title">
-                <strong>{{ item.title }}</strong> {{ item.subtitle }}
-              </p>
-              <img :src="item.src" :alt="item.alt" />
-            </div>
-            <span v-if="index < explainerImages.length - 1" class="step__plus">+</span>
-          </template>
+          </div>
+          <div v-if="!originalFiles.length" class="hero__steps">
+            <template v-for="(item, index) in explainerImages" :key="item.title">
+              <div class="step" :class="{ 'step--small': index > 0 }">
+                <p class="step__title">
+                  <strong>{{ item.title }}</strong> {{ item.subtitle }}
+                </p>
+                <img :src="item.src" :alt="item.alt" />
+              </div>
+              <span v-if="index < explainerImages.length - 1" class="step__plus">+</span>
+            </template>
+          </div>
         </div>
       </div>
     </div>
@@ -493,18 +501,20 @@
     <footer class="site-footer">
       <div class="site-footer__inner">
         <div class="site-footer__column">
-          <h3>Acerca</h3>
+          <h3><a href="/acerca/">Acerca</a></h3>
           <p>
             Cortamelacara es una herramienta online gratis para recortar rostros y eliminar fondos
             en segundos. Procesa lotes de fotos sin instalar nada.
           </p>
+          <a class="site-footer__page-link" href="/acerca/">Leer más sobre la herramienta</a>
         </div>
         <div class="site-footer__column">
-          <h3>Quienes somos</h3>
+          <h3><a href="/quienes-somos/">Quienes somos</a></h3>
           <p>
             Somos un equipo que crea microherramientas simples para tareas puntuales.
             Buscamos resultados claros con el menor esfuerzo.
           </p>
+          <a class="site-footer__page-link" href="/quienes-somos/">Conocer al equipo</a>
         </div>
       </div>
       <div class="site-footer__theme-box">
@@ -1729,17 +1739,55 @@ h1 {
 
 .brand-header__inner {
   display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.brand-header__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  width: 100%;
+  padding-bottom: 5px;
+  border-bottom: 1px dashed #dfdbd6;
+}
+
+.brand-header__hero {
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 32px;
+  width: 100%;
 }
 
 .brand-copy {
-  max-width: 520px;
+  flex: 0 0 470px;
+  max-width: 470px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
   align-items: flex-start;
+}
+
+.brand-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+}
+
+.brand-nav a {
+  color: #8f8f8f;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.brand-nav a:hover {
+  color: #d46060;
 }
 
 .brand-header--explainer .brand-header__inner {
@@ -1789,11 +1837,12 @@ h1 {
 }
 
 .hero__lede--lead {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 800;
   font-family: 'Montserrat', Arial, sans-serif;
   margin: 0;
   display: inline;
+  max-width: 350px;
 }
 
 .hero__lede__rest {
@@ -1803,9 +1852,12 @@ h1 {
 .hero__steps {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  flex-wrap: wrap;
+  gap: 18px;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: max-content;
 }
 
 .step {
@@ -1839,14 +1891,14 @@ h1 {
 }
 
 .step img {
-  width: 160px;
-  height: 135px;
+  width: 130px;
+  height: 115px;
   object-fit: contain;
 }
 
 .step--small img {
-  width: 130px;
-  height: 130px;
+  width: 110px;
+  height: 110px;
 }
 
 .upload-section {
@@ -2797,12 +2849,30 @@ h1 {
   font-family: 'Montserrat', Arial, sans-serif;
 }
 
+.site-footer__column h3 a {
+  text-decoration: none;
+}
+
 .site-footer__column p {
   margin: 0;
   font-size: 15px;
   line-height: 1.55;
   color: #d8d5d1;
   font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.site-footer__page-link {
+  display: inline-flex;
+  margin-top: 12px;
+  color: #eb7570;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.site-footer__page-link:hover {
+  text-decoration: underline;
 }
 
 .site-footer__theme-box {
@@ -3034,13 +3104,21 @@ h1 {
 }
 
 @media (max-width: 900px) {
-  .brand-header__inner {
+  .brand-header__top,
+  .brand-header__hero {
     flex-direction: column;
     align-items: flex-start;
   }
 
+  .brand-copy {
+    flex: 0 1 auto;
+    max-width: 760px;
+  }
+
   .hero__steps {
     justify-content: flex-start;
+    margin-left: 0;
+    width: 100%;
   }
 
   .seo-content__grid,
