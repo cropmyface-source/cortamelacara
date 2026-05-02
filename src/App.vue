@@ -469,7 +469,29 @@
 
               <div v-if="isProcessing" class="processing-warning" role="status" aria-live="polite">
                 <div class="processing-warning__inner">
-                  <img :src="warningIcon" alt="" />
+                  <span class="processing-warning__icons" aria-hidden="true">
+                    <svg class="processing-warning__icon processing-warning__icon--warning" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M12 3.5 21 20.5H3L12 3.5Z"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linejoin="round"
+                      />
+                      <path
+                        d="M12 9v5"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                        stroke-linecap="round"
+                      />
+                      <circle cx="12" cy="17.2" r="1.1" fill="currentColor" />
+                    </svg>
+                    <svg class="processing-warning__icon processing-warning__icon--ai" viewBox="0 0 79.8 77.4" fill="none">
+                      <path
+                        d="M73.1,37.2c-21.4-5.9-25.8-10.4-31.7-31.7-.2-.7-.8-1.1-1.5-1.1s-1.3.5-1.5,1.1c-5.9,21.4-10.4,25.8-31.7,31.7-.7.2-1.1.8-1.1,1.5s.5,1.3,1.1,1.5c21.4,5.9,25.8,10.4,31.7,31.7.2.7.8,1.1,1.5,1.1s1.3-.5,1.5-1.1c5.9-21.4,10.4-25.8,31.7-31.7.7-.2,1.1-.8,1.1-1.5s-.5-1.3-1.1-1.5Z"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </span>
                   <p>Descargando modelo... <br><span>Este proceso puede tardar unos minutos</span></p>
                 </div>
               </div>
@@ -1905,7 +1927,7 @@ function sendContact() {
     message || '(Sin mensaje)',
   ];
   const body = bodyLines.join('\n');
-  const mailto = `mailto:ploscri@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const mailto = `mailto:cropmyface@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   trackEvent('contact_submitted', {
     has_name: Boolean(name),
     has_email: Boolean(email),
@@ -2321,13 +2343,13 @@ h1 {
 }
 
 .seo-card__icon {
-  width: 72px;
-  height: 72px;
+  width: 50px;
+  height: 50px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   background: #d46060;
-  border-radius: 18px;
+  border-radius: 6px;
   color: #ffffff;
 }
 
@@ -2544,6 +2566,9 @@ h1 {
   color: #be5d5d;
   font-family: 'Montserrat', Arial, sans-serif;
   text-transform: uppercase;
+  background: white;
+  border: 1px solid black;
+  border-radius: 5px;
 }
 
 .processing-warning__inner span {
@@ -2553,9 +2578,29 @@ h1 {
   text-transform: none;
 }
 
-.processing-warning__inner img {
+.processing-warning__icons {
+  position: relative;
   width: 40px;
   height: 40px;
+  flex: 0 0 40px;
+}
+
+.processing-warning__icon {
+  position: absolute;
+  inset: 0;
+  width: 40px;
+  height: 40px;
+  color: #be5d5d;
+  opacity: 0;
+  animation: processing-warning-icon-fade 2.4s ease-in-out infinite;
+}
+
+.processing-warning__icon--warning {
+  opacity: 1;
+}
+
+.processing-warning__icon--ai {
+  animation-delay: 1.2s;
 }
 
 .processing-warning__inner p {
@@ -2563,6 +2608,20 @@ h1 {
   font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.04em;
+}
+
+@keyframes processing-warning-icon-fade {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  95% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 .preview-panel__thumbs {
