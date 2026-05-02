@@ -470,7 +470,7 @@
               <div v-if="isProcessing" class="processing-warning" role="status" aria-live="polite">
                 <div class="processing-warning__inner">
                   <img :src="warningIcon" alt="" />
-                  <p>Este proceso puede tardar unos minutos...</p>
+                  <p>Descargando modelo... <br><span>Este proceso puede tardar unos minutos</span></p>
                 </div>
               </div>
             </div>
@@ -2549,9 +2549,16 @@ h1 {
   text-transform: uppercase;
 }
 
+.processing-warning__inner span {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111111;
+  text-transform: none;
+}
+
 .processing-warning__inner img {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
 }
 
 .processing-warning__inner p {
@@ -3068,8 +3075,8 @@ h1 {
 
 .background-gradient__preview {
   grid-column: 1 / -1;
-  height: 34px;
-  border: 2px solid #111111;
+  height: 20px;
+  margin-top: 15px;
 }
 
 .background-gradient__angle {
