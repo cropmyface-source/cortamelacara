@@ -748,9 +748,6 @@ import logoHome from './assets/logoOkHome.png';
 import logoShort from './assets/LogoOKShort.png';
 import downloadIcon from './assets/descargar.svg';
 import warningIcon from './assets/warning.svg';
-import presetCv from './assets/CV.png';
-import presetRedesPersonal from './assets/Redes personal.png';
-import presetRedesLaboral from './assets/Redes Labiral.png';
 import {
   ensureFaceApiReady,
   detectFaces,
@@ -870,7 +867,7 @@ const presetOptions = [
     id: 'cv',
     label: 'C.V.',
     description: 'Cara recortada, fondo blanco y encuadre limpio.',
-    src: presetCv,
+    src: '/preset-cv.png',
     backgroundMode: 'solid',
     backgroundColor: '#ffffff',
     filterBn: false,
@@ -880,7 +877,7 @@ const presetOptions = [
     id: 'redes-personal',
     label: 'Redes personal',
     description: 'Blanco y negro, fondo de color y multiply aplicado.',
-    src: presetRedesPersonal,
+    src: '/preset-redes-personal.png',
     backgroundMode: 'solid',
     backgroundColor: '#fff566',
     filterBn: true,
@@ -890,7 +887,7 @@ const presetOptions = [
     id: 'redes-laboral',
     label: 'Redes laboral',
     description: 'Blanco y negro, fondo en degradé y sin multiply.',
-    src: presetRedesLaboral,
+    src: '/preset-redes-laboral.png',
     backgroundMode: 'gradient',
     backgroundColor: '#d7eef2',
     backgroundGradientStart: '#d7eef2',
