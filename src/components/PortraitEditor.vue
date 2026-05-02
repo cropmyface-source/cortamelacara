@@ -110,6 +110,10 @@ let dragStartCropY = 0;
 async function openEditor(config) {
   sourceConfig.value = {
     backgroundColor: '#ffffff',
+    backgroundMode: 'solid',
+    backgroundGradientStart: '#ffffff',
+    backgroundGradientEnd: '#ffffff',
+    backgroundGradientAngle: 135,
     outputWidth: 700,
     transparentOutput: false,
     ...config,
@@ -173,8 +177,7 @@ function drawPreview() {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (sourceConfig.value?.transparentOutput && !showTransparentPreview.value) {
-    ctx.fillStyle = sourceConfig.value.backgroundColor || '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    fillPreviewBackground(ctx, canvas.width, canvas.height);
   }
 
   ctx.filter = sourceConfig.value?.previewFilter || 'none';
@@ -258,8 +261,7 @@ function renderOutput({ transparent }) {
   if (!ctx) return null;
 
   if (!transparent) {
-    ctx.fillStyle = sourceConfig.value.backgroundColor || '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    fillPreviewBackground(ctx, canvas.width, canvas.height);
   } else {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
@@ -277,6 +279,45 @@ function renderOutput({ transparent }) {
   );
 
   return canvas.toDataURL('image/png');
+}
+
+function fillPreviewBackground(ctx, width, height) {
+  if (sourceConfig.value?.backgroundMode === 'gradient') {
+    const points = getLinearGradientPoints(
+      width,
+      height,
+      sourceConfig.value.backgroundGradientAngle || 135,
+    );
+    const gradient = ctx.createLinearGradient(points.x0, points.y0, points.x1, points.y1);
+    gradient.addColorStop(0, sourceConfig.value.backgroundGradientStart || '#ffffff');
+    gradient.addColorStop(1, sourceConfig.value.backgroundGradientEnd || '#ffffff');
+    ctx.fillStyle = gradient;
+  } else {
+    ctx.fillStyle = sourceConfig.value?.backgroundColor || '#ffffff';
+  }
+  ctx.fillRect(0, 0, width, height);
+}
+
+function normalizeAngle(value) {
+  const angle = Number(value);
+  if (!Number.isFinite(angle)) return 135;
+  return ((Math.round(angle) % 360) + 360) % 360;
+}
+
+function getLinearGradientPoints(width, height, angleDeg) {
+  const angleRad = (normalizeAngle(angleDeg) - 90) * (Math.PI / 180);
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const lineLength = Math.abs(width * Math.cos(angleRad)) + Math.abs(height * Math.sin(angleRad));
+  const dx = Math.cos(angleRad) * lineLength / 2;
+  const dy = Math.sin(angleRad) * lineLength / 2;
+
+  return {
+    x0: halfWidth - dx,
+    y0: halfHeight - dy,
+    x1: halfWidth + dx,
+    y1: halfHeight + dy,
+  };
 }
 
 function apply() {

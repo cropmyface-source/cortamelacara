@@ -269,25 +269,80 @@
             <span>Eliminar el fondo</span>
           </label>
 
-          <div v-if="removeBackground" class="settings-warning">
-            La eliminación de fondo se procesa en tu navegador. La primera vez puede tardar más porque se descarga el modelo.
-            <span v-if="removeBackgroundModelStatus === 'loading'"> Descargando modelo...</span>
-            <span v-else-if="removeBackgroundModelStatus === 'ready'"> Modelo listo.</span>
-            <span v-else-if="removeBackgroundModelStatus === 'error'"> No se pudo precargar el modelo; se intentará al procesar.</span>
-          </div>
-
           <div class="settings-panel__divider"></div>
 
           <div v-if="removeBackground" class="settings-panel__group">
-            <label class="color color--block">
-              <input
-                v-model="backgroundColor"
-                type="color"
-                aria-label="Fondo de la foto"
-                :disabled="downloadTransparent"
-              />
-              <span>Color de Fondo</span>
-            </label>
+            <div class="background-picker" :class="{ 'background-picker--disabled': downloadTransparent }">
+              <div class="background-picker__header">
+                <span>Fondo de la foto</span>
+                <div class="background-picker__modes" aria-label="Tipo de fondo">
+                  <button
+                    type="button"
+                    :class="{ 'background-picker__mode--active': backgroundMode === 'solid' }"
+                    :disabled="downloadTransparent"
+                    @click="setBackgroundMode('solid')"
+                  >
+                    Color
+                  </button>
+                  <button
+                    type="button"
+                    :class="{ 'background-picker__mode--active': backgroundMode === 'gradient' }"
+                    :disabled="downloadTransparent"
+                    @click="setBackgroundMode('gradient')"
+                  >
+                    Degradé
+                  </button>
+                </div>
+              </div>
+
+              <label v-if="backgroundMode === 'solid'" class="color color--block">
+                <input
+                  :value="backgroundColor"
+                  type="color"
+                  aria-label="Color de fondo"
+                  :disabled="downloadTransparent"
+                  @input="handleBackgroundColorInput"
+                />
+                <span>Color de Fondo</span>
+              </label>
+
+              <div v-else class="background-gradient">
+                <div class="background-gradient__preview" :style="getBackgroundStyle()" aria-hidden="true"></div>
+                <label class="background-gradient__angle">
+                  <span>Ángulo</span>
+                  <input
+                    v-model.number="backgroundGradientAngle"
+                    type="range"
+                    min="0"
+                    max="360"
+                    step="1"
+                    :disabled="downloadTransparent"
+                    aria-label="Ángulo del degradé"
+                  />
+                  <span class="background-gradient__angle-value">{{ normalizedGradientAngle }}°</span>
+                </label>
+                <label class="color color--compact">
+                  <input
+                    :value="backgroundGradientStart"
+                    type="color"
+                    aria-label="Color inicial del degradé"
+                    :disabled="downloadTransparent"
+                    @input="handleGradientColorInput('start', $event)"
+                  />
+                  <span>Inicio</span>
+                </label>
+                <label class="color color--compact">
+                  <input
+                    :value="backgroundGradientEnd"
+                    type="color"
+                    aria-label="Color final del degradé"
+                    :disabled="downloadTransparent"
+                    @input="handleGradientColorInput('end', $event)"
+                  />
+                  <span>Fin</span>
+                </label>
+              </div>
+            </div>
 
             <label class="check check--block">
               <input v-model="downloadTransparent" type="checkbox" />
@@ -354,62 +409,98 @@
               </button>
             </div>
           </div>
-          <div class="preview-panel__content" :class="{ 'preview-panel__content--single': !isProcessed }">
-            <TransitionGroup name="thumb" tag="div" class="thumb-grid" appear>
-              <article
-                v-for="(item, index) in displayItems"
-                :key="item.id"
-                class="thumb-card"
-                :style="{ transitionDelay: `${index * 60}ms` }"
-              >
-                <div
-                  class="thumb-card__image"
-                  :class="{ 'thumb-card__image--transparent': showTransparentPreview }"
-                  :style="getThumbBackground(item)"
+          <div class="preview-panel__content" :class="{ 'preview-panel__content--single': !isProcessed && !showPresetPanel }">
+            <div class="preview-panel__thumbs">
+              <TransitionGroup name="thumb" tag="div" class="thumb-grid" appear>
+                <article
+                  v-for="(item, index) in displayItems"
+                  :key="item.id"
+                  class="thumb-card"
+                  :style="{ transitionDelay: `${index * 60}ms` }"
                 >
-                  <img
-                    class="thumb-card__img thumb-card__img--raw"
-                    :class="{ 'thumb-card__img--fade': isProcessed && item.crossfade }"
-                    :src="item.rawUrl"
-                    :alt="item.name"
-                  />
                   <div
-                    v-if="item.crossfade"
-                    class="thumb-card__wash"
-                    :class="{ 'thumb-card__wash--on': isProcessed }"
-                  ></div>
-                  <img
-                    v-if="item.processedUrl"
-                    class="thumb-card__img thumb-card__img--processed"
-                    :class="{ 'thumb-card__img--show': isProcessed && item.crossfade }"
-                    :style="processedImageStyle"
-                    :src="item.processedUrl"
-                    :alt="item.name"
-                  />
-                </div>
-                <div class="thumb-card__meta">
-                  <p class="thumb-card__name">{{ item.name }}</p>
-                  <p class="thumb-card__size">{{ item.sizeLabel }}</p>
-                  <div v-if="isProcessed" class="thumb-card__actions">
-                    <button
-                      v-if="item.canAdjustCrop"
-                      class="thumb-card__edit"
-                      type="button"
-                      @click="openCropEditor(item)"
-                    >
-                      Ajustar recorte
-                    </button>
-                    <button
-                      class="thumb-card__download"
-                      type="button"
-                      @click="downloadPortrait(item, index, downloadTransparent)"
-                    >
-                      <img :src="downloadIcon" alt="" />
-                    </button>
+                    class="thumb-card__image"
+                    :class="{ 'thumb-card__image--transparent': showTransparentPreview }"
+                    :style="getThumbBackground(item)"
+                  >
+                    <img
+                      class="thumb-card__img thumb-card__img--raw"
+                      :class="{ 'thumb-card__img--fade': isProcessed && item.crossfade }"
+                      :src="item.rawUrl"
+                      :alt="item.name"
+                    />
+                    <div
+                      v-if="item.crossfade"
+                      class="thumb-card__wash"
+                      :class="{ 'thumb-card__wash--on': isProcessed }"
+                    ></div>
+                    <img
+                      v-if="item.processedUrl"
+                      class="thumb-card__img thumb-card__img--processed"
+                      :class="{ 'thumb-card__img--show': isProcessed && item.crossfade }"
+                      :style="processedImageStyle"
+                      :src="item.processedUrl"
+                      :alt="item.name"
+                    />
                   </div>
+                  <div class="thumb-card__meta">
+                    <p class="thumb-card__name">{{ item.name }}</p>
+                    <p class="thumb-card__size">{{ item.sizeLabel }}</p>
+                    <div v-if="isProcessed" class="thumb-card__actions">
+                      <button
+                        v-if="item.canAdjustCrop"
+                        class="thumb-card__edit"
+                        type="button"
+                        @click="openCropEditor(item)"
+                      >
+                        Ajustar recorte
+                      </button>
+                      <button
+                        class="thumb-card__download"
+                        type="button"
+                        @click="downloadPortrait(item, index, downloadTransparent)"
+                      >
+                        <img :src="downloadIcon" alt="" />
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              </TransitionGroup>
+
+              <div v-if="isProcessing" class="processing-warning" role="status" aria-live="polite">
+                <div class="processing-warning__inner">
+                  <img :src="warningIcon" alt="" />
+                  <p>Este proceso puede tardar unos minutos...</p>
                 </div>
-              </article>
-            </TransitionGroup>
+              </div>
+            </div>
+
+            <aside v-if="showPresetPanel" class="presets-panel" aria-labelledby="presets-panel-title">
+              <h3 id="presets-panel-title" class="presets-panel__title">Elegí un preset</h3>
+              <div class="presets-panel__list">
+                <button
+                  v-for="preset in presetOptions"
+                  :key="preset.id"
+                  class="preset-card"
+                  :class="[
+                    `preset-card--${preset.id}`,
+                    { 'preset-card--active': selectedPreset === preset.id },
+                  ]"
+                  type="button"
+                  :disabled="isProcessing"
+                  :aria-pressed="selectedPreset === preset.id"
+                  @click="applyPreset(preset.id)"
+                >
+                  <span class="preset-card__preview" aria-hidden="true">
+                    <img :src="preset.src" :alt="preset.label" />
+                  </span>
+                  <span class="preset-card__copy">
+                    <span class="preset-card__name">{{ preset.label }}</span>
+                    <span class="preset-card__description">{{ preset.description }}</span>
+                  </span>
+                </button>
+              </div>
+            </aside>
 
             <div v-if="invalidFilesCount" class="upload-warning upload-warning--panel">
               <div class="upload-warning__inner">
@@ -657,6 +748,9 @@ import logoHome from './assets/logoOkHome.png';
 import logoShort from './assets/LogoOKShort.png';
 import downloadIcon from './assets/descargar.svg';
 import warningIcon from './assets/warning.svg';
+import presetCv from './assets/CV.png';
+import presetRedesPersonal from './assets/Redes personal.png';
+import presetRedesLaboral from './assets/Redes Labiral.png';
 import {
   ensureFaceApiReady,
   detectFaces,
@@ -677,6 +771,10 @@ const removeBackgroundModelStatus = ref('idle');
 const invalidFilesCount = ref(0);
 
 const backgroundColor = ref('#fff35a');
+const backgroundMode = ref('solid');
+const backgroundGradientStart = ref('#d7eef2');
+const backgroundGradientEnd = ref('#91bd8d');
+const backgroundGradientAngle = ref(135);
 const cropFace = ref(true);
 const removeBackground = ref(false);
 const downloadTransparent = ref(false);
@@ -704,9 +802,11 @@ const contactEmail = ref('');
 const contactMessage = ref('');
 const portraitEditorRef = ref(null);
 const editingItemId = ref(null);
+const selectedPreset = ref(null);
 let processingRunId = 0;
 let uploadSessionId = 0;
 let processStartedAt = 0;
+let isApplyingPreset = false;
 const debugProcessing = import.meta.env.DEV;
 const seoTitle = 'Cortamelacara | Recortar caras y quitar fondo online gratis';
 const seoDescription = 'Recortá caras y eliminá el fondo de tus fotos online gratis. Subí varias imágenes, procesalas en tu navegador y descargá retratos listos para CV, perfiles y avatares.';
@@ -749,10 +849,56 @@ const processedImageStyle = computed(() => ({
   mixBlendMode: activeMultiply.value ? 'multiply' : 'normal',
 }));
 
+const normalizedGradientAngle = computed(() => normalizeAngle(backgroundGradientAngle.value));
+
+const backgroundGradientCss = computed(() =>
+  `linear-gradient(${normalizedGradientAngle.value}deg, ${backgroundGradientStart.value} 0%, ${backgroundGradientEnd.value} 100%)`,
+);
+
+const showPresetPanel = computed(() =>
+  Boolean(originalFiles.value.length && !isProcessed.value),
+);
+
 const explainerImages = [
   { title: 'Subí', subtitle: 'varias fotos', src: explainerOne, alt: 'Ejemplo de fotos' },
   { title: 'Recortá', subtitle: 'la cara', src: explainerTwo, alt: 'Ejemplo de encuadre' },
   { title: 'Descargá', subtitle: 'sin fondo', src: explainerThree, alt: 'Ejemplo de resultado' },
+];
+
+const presetOptions = [
+  {
+    id: 'cv',
+    label: 'C.V.',
+    description: 'Cara recortada, fondo blanco y encuadre limpio.',
+    src: presetCv,
+    backgroundMode: 'solid',
+    backgroundColor: '#ffffff',
+    filterBn: false,
+    filterMultiply: false,
+  },
+  {
+    id: 'redes-personal',
+    label: 'Redes personal',
+    description: 'Blanco y negro, fondo de color y multiply aplicado.',
+    src: presetRedesPersonal,
+    backgroundMode: 'solid',
+    backgroundColor: '#fff566',
+    filterBn: true,
+    filterMultiply: true,
+  },
+  {
+    id: 'redes-laboral',
+    label: 'Redes laboral',
+    description: 'Blanco y negro, fondo en degradé y sin multiply.',
+    src: presetRedesLaboral,
+    backgroundMode: 'gradient',
+    backgroundColor: '#d7eef2',
+    backgroundGradientStart: '#d7eef2',
+    backgroundGradientEnd: '#8fbc8a',
+    backgroundGradientAngle: 135,
+    filterBn: true,
+    filterMultiply: false,
+  },
 ];
 
 const displayItems = computed(() => {
@@ -925,6 +1071,30 @@ watch(removeBackground, (value) => {
   }
 });
 
+watch(
+  [
+    cropFace,
+    removeBackground,
+    downloadTransparent,
+    filterBn,
+    filterMultiply,
+    backgroundColor,
+    backgroundMode,
+    backgroundGradientStart,
+    backgroundGradientEnd,
+    backgroundGradientAngle,
+    exposure,
+    brightness,
+    contrast,
+    highlights,
+    shadows,
+  ],
+  () => {
+    if (isApplyingPreset) return;
+    selectedPreset.value = null;
+  },
+);
+
 onMounted(async () => {
   applySeoMetadata();
   initAnalytics();
@@ -1080,6 +1250,72 @@ function cancelProcessingRun() {
   isProcessing.value = false;
 }
 
+async function applyPreset(presetId) {
+  const preset = presetOptions.find((item) => item.id === presetId);
+  if (!preset || isProcessing.value) return;
+
+  isApplyingPreset = true;
+  selectedPreset.value = preset.id;
+  cropFace.value = true;
+  removeBackground.value = true;
+  downloadTransparent.value = false;
+  backgroundMode.value = preset.backgroundMode || 'solid';
+  backgroundColor.value = preset.backgroundColor || '#ffffff';
+  backgroundGradientStart.value = preset.backgroundGradientStart || preset.backgroundColor || '#ffffff';
+  backgroundGradientEnd.value = preset.backgroundGradientEnd || preset.backgroundColor || '#ffffff';
+  backgroundGradientAngle.value = preset.backgroundGradientAngle ?? 135;
+  filterBn.value = Boolean(preset.filterBn);
+  filterMultiply.value = Boolean(preset.filterMultiply);
+  exposure.value = 100;
+  brightness.value = 100;
+  contrast.value = 100;
+  highlights.value = 100;
+  shadows.value = 100;
+
+  trackEvent('preset_selected', {
+    preset_id: preset.id,
+    files_count: originalFiles.value.length,
+  });
+
+  await nextTick();
+  isApplyingPreset = false;
+  await handleProcess();
+}
+
+function handleBackgroundColorInput(event) {
+  backgroundColor.value = event?.target?.value || '#ffffff';
+  backgroundMode.value = 'solid';
+  backgroundGradientStart.value = backgroundColor.value;
+  backgroundGradientEnd.value = backgroundColor.value;
+  backgroundGradientAngle.value = 135;
+}
+
+function setBackgroundMode(mode) {
+  if (downloadTransparent.value) return;
+  backgroundMode.value = mode === 'gradient' ? 'gradient' : 'solid';
+  if (backgroundMode.value === 'gradient') {
+    backgroundGradientStart.value = backgroundGradientStart.value || backgroundColor.value;
+    backgroundGradientEnd.value = backgroundGradientEnd.value || backgroundColor.value;
+  }
+}
+
+function handleGradientColorInput(position, event) {
+  const nextColor = event?.target?.value || '#ffffff';
+  backgroundMode.value = 'gradient';
+  if (position === 'end') {
+    backgroundGradientEnd.value = nextColor;
+  } else {
+    backgroundGradientStart.value = nextColor;
+    backgroundColor.value = nextColor;
+  }
+}
+
+function normalizeAngle(value) {
+  const angle = Number(value);
+  if (!Number.isFinite(angle)) return 135;
+  return ((Math.round(angle) % 360) + 360) % 360;
+}
+
 function handleFiles(files) {
   cancelProcessingRun();
   errorMessage.value = '';
@@ -1105,6 +1341,9 @@ function handleFiles(files) {
       cropFace: cropFace.value,
       removeBackground: removeBackground.value,
       backgroundColor: backgroundColor.value,
+      backgroundMode: backgroundMode.value,
+      backgroundGradientAngle: normalizedGradientAngle.value,
+      selectedPreset: selectedPreset.value,
       outputSize: outputSize.value,
     },
   });
@@ -1148,6 +1387,7 @@ async function handleProcess() {
     crop_face: cropFace.value,
     remove_background: removeBackground.value,
     transparent_download: downloadTransparent.value,
+    selected_preset: selectedPreset.value || 'manual',
     output_size: Number(outputSize.value) || 0,
   });
   await processImages();
@@ -1161,6 +1401,11 @@ async function processImages() {
     cropFace: cropFace.value,
     removeBackground: removeBackground.value,
     backgroundColor: backgroundColor.value,
+    backgroundMode: backgroundMode.value,
+    backgroundGradientStart: backgroundGradientStart.value,
+    backgroundGradientEnd: backgroundGradientEnd.value,
+    backgroundGradientAngle: normalizedGradientAngle.value,
+    selectedPreset: selectedPreset.value || 'manual',
     outputSize: outputSize.value,
   };
   logProcessing('process-start', {
@@ -1349,6 +1594,7 @@ async function processImages() {
       files_output: processedFiles.value.length,
       crop_face: processConfig.cropFace,
       remove_background: processConfig.removeBackground,
+      selected_preset: processConfig.selectedPreset,
       output_size: Number(processConfig.outputSize) || 0,
       duration_ms: processStartedAt ? Date.now() - processStartedAt : undefined,
     });
@@ -1374,6 +1620,7 @@ async function processImages() {
       files_input: total,
       crop_face: processConfig.cropFace,
       remove_background: processConfig.removeBackground,
+      selected_preset: processConfig.selectedPreset,
       error_code: err?.code || 'unknown',
       duration_ms: processStartedAt ? Date.now() - processStartedAt : undefined,
     });
@@ -1430,6 +1677,10 @@ async function openCropEditor(item) {
     imageUrl: item.editorSourceUrl,
     initialCrop: item.editorCrop,
     backgroundColor: backgroundColor.value,
+    backgroundMode: backgroundMode.value,
+    backgroundGradientStart: backgroundGradientStart.value,
+    backgroundGradientEnd: backgroundGradientEnd.value,
+    backgroundGradientAngle: normalizedGradientAngle.value,
     outputWidth: outputSize.value,
     transparentOutput: Boolean(item.transparentOutput),
     showTransparentPreview: Boolean(downloadTransparent.value),
@@ -1498,9 +1749,19 @@ function getThumbBackground(item) {
   if (!isProcessed.value) return null;
   if (downloadTransparent.value) return null;
   if (item && item.hasTransparent) {
-    return { backgroundColor: backgroundColor.value };
+    return getBackgroundStyle();
   }
   return null;
+}
+
+function getBackgroundStyle() {
+  if (backgroundMode.value === 'gradient') {
+    return {
+      backgroundColor: backgroundGradientStart.value,
+      backgroundImage: backgroundGradientCss.value,
+    };
+  }
+  return { backgroundColor: backgroundColor.value };
 }
 
 function formatSize(bytes) {
@@ -1582,8 +1843,7 @@ async function buildFilteredDownload(portrait, transparent) {
   }
 
   if (needsBackgroundFill) {
-    ctx.fillStyle = backgroundColor.value;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    fillCanvasBackground(ctx, canvas.width, canvas.height);
   }
 
   ctx.globalCompositeOperation = activeMultiply.value && !transparent ? 'multiply' : 'source-over';
@@ -1601,6 +1861,35 @@ async function buildFilteredDownload(portrait, transparent) {
 
   const url = URL.createObjectURL(blob);
   return { url, revoke: true };
+}
+
+function fillCanvasBackground(ctx, width, height) {
+  if (backgroundMode.value === 'gradient') {
+    const points = getLinearGradientPoints(width, height, normalizedGradientAngle.value);
+    const gradient = ctx.createLinearGradient(points.x0, points.y0, points.x1, points.y1);
+    gradient.addColorStop(0, backgroundGradientStart.value);
+    gradient.addColorStop(1, backgroundGradientEnd.value);
+    ctx.fillStyle = gradient;
+  } else {
+    ctx.fillStyle = backgroundColor.value;
+  }
+  ctx.fillRect(0, 0, width, height);
+}
+
+function getLinearGradientPoints(width, height, angleDeg) {
+  const angleRad = (normalizeAngle(angleDeg) - 90) * (Math.PI / 180);
+  const halfWidth = width / 2;
+  const halfHeight = height / 2;
+  const lineLength = Math.abs(width * Math.cos(angleRad)) + Math.abs(height * Math.sin(angleRad));
+  const dx = Math.cos(angleRad) * lineLength / 2;
+  const dy = Math.sin(angleRad) * lineLength / 2;
+
+  return {
+    x0: halfWidth - dx,
+    y0: halfHeight - dy,
+    x1: halfWidth + dx,
+    y1: halfHeight + dy,
+  };
 }
 
 onBeforeUnmount(() => {
@@ -2239,6 +2528,45 @@ h1 {
   font-family: 'Montserrat', Arial, sans-serif;
 }
 
+.processing-warning {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.68);
+  pointer-events: none;
+}
+
+.processing-warning__inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  color: #be5d5d;
+  font-family: 'Montserrat', Arial, sans-serif;
+  text-transform: uppercase;
+}
+
+.processing-warning__inner img {
+  width: 32px;
+  height: 32px;
+}
+
+.processing-warning__inner p {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.preview-panel__thumbs {
+  position: relative;
+  min-width: 0;
+  min-height: 100%;
+}
+
 .thumb-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, 200px);
@@ -2457,7 +2785,99 @@ h1 {
   accent-color: #111111;
 }
 
+.presets-panel {
+  border-left: 1px dashed #bfbfbf;
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
 
+.presets-panel__title {
+  margin: 0;
+  padding: 0 0 14px;
+  border-bottom: 1px solid #dedede;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.presets-panel__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.preset-card {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #dedede;
+  background: transparent;
+  color: #111111;
+  padding: 24px 0;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  font-family: 'Montserrat', Arial, sans-serif;
+}
+
+.preset-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.preset-card--active .preset-card__name {
+  color: #d46060;
+}
+
+.preset-card--active .preset-card__preview {
+  border-color: #111111;
+  box-shadow: 0 0 0 2px #111111;
+}
+
+.preset-card__preview {
+  width: 88px;
+  height: 88px;
+  border: 2px solid #eeeeee;
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.preset-card__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+}
+
+.preset-card__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.preset-card__name {
+  font-size: 14px;
+  line-height: 1.05;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.preset-card__description {
+  color: #747474;
+  font-size: 11px;
+  line-height: 1.35;
+}
 
 .settings-panel,
 .actions-panel {
@@ -2590,19 +3010,88 @@ h1 {
   color: #d46060;
 }
 
-.settings-warning {
-  background: #d46060;
-  color: #ffffff;
-  padding: 12px 14px;
-  border-radius: 10px;
-  font-size: 12px;
-  line-height: 1.4;
+.background-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.background-picker--disabled {
+  opacity: 0.55;
+}
+
+.background-picker__header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-family: 'Montserrat', Arial, sans-serif;
+  font-size: 15px;
+}
+
+.background-picker__modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #111111;
+}
+
+.background-picker__modes button {
+  border: 0;
+  background: #ffffff;
+  color: #111111;
+  height: 34px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   font-family: 'Montserrat', Arial, sans-serif;
 }
 
-.settings-warning a {
-  color: #ffffff;
-  text-decoration: underline;
+.background-picker__modes button + button {
+  border-left: 1px solid #111111;
+}
+
+.background-picker__modes button:disabled {
+  cursor: not-allowed;
+}
+
+.background-picker__mode--active {
+  background: #111111 !important;
+  color: #ffffff !important;
+}
+
+.background-gradient {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+
+.background-gradient__preview {
+  grid-column: 1 / -1;
+  height: 34px;
+  border: 2px solid #111111;
+}
+
+.background-gradient__angle {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Montserrat', Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.background-gradient__angle input {
+  width: 100%;
+  accent-color: #111111;
+}
+
+.background-gradient__angle-value {
+  text-align: right;
+  color: #777777;
+  font-weight: 700;
 }
 
 .color {
@@ -2616,6 +3105,11 @@ h1 {
 .color--block {
   justify-content: flex-start;
   width: 100%;
+}
+
+.color--compact {
+  gap: 8px;
+  font-size: 13px;
 }
 
 .color input {
@@ -3187,6 +3681,13 @@ h1 {
     padding-top: 18px;
   }
 
+  .presets-panel {
+    border-left: none;
+    border-top: 1px dashed #bfbfbf;
+    padding-left: 0;
+    padding-top: 18px;
+  }
+
   .preview-panel--processed::after {
     display: none;
   }
@@ -3356,6 +3857,21 @@ h1 {
   .thumb-card__download img {
     width: 14px;
     height: 22px;
+  }
+
+  .preset-card {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 14px;
+    padding: 18px 0;
+  }
+
+  .preset-card__preview {
+    width: 68px;
+    height: 68px;
+  }
+
+  .preset-card__description {
+    display: none;
   }
 }
 </style>
